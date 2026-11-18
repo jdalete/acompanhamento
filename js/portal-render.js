@@ -19,6 +19,15 @@ const PortalRender = (() => {
     return 'https://' + v;
   }
 
+  /* Tarefas que ainda prendem esta (nome, e o projeto quando é outro) */
+  function aguardadas(db, t, p) {
+    if (t.status === 'concluida') return [];
+    return (t.waitingFor || []).map(id => db.tasks.find(x => x.id === id)).filter(x => x && x.status !== 'concluida').map(x => {
+      const st = db.stages.find(s => s.id === x.stageId), pr = st && db.projects.find(q => q.id === st.projectId);
+      return pr && pr.id !== p.id ? `${x.title} (${pr.name})` : x.title;
+    });
+  }
+
   /* Retrato do cliente: só o que ele pode ver */
   function build(db, clientId) {
     const c = db.clients.find(x => x.id === clientId);
@@ -31,10 +40,10 @@ const PortalRender = (() => {
         expected: s.expected || '',
         dueDate: s.dueDate || '',
         tasks: db.tasks.filter(t => t.stageId === s.id).sort((a, b) => a.order - b.order)
-          .map(t => ({ title: t.title, status: t.status, dueDate: t.dueDate || '', completedAt: t.completedAt || null })),
+          .map(t => ({ title: t.title, status: t.status, dueDate: t.dueDate || '', completedAt: t.completedAt || null, waiting: aguardadas(db, t, p) })),
       }));
       const deliverables = stages.flatMap(s => db.tasks.filter(t => t.stageId === s.id).sort((a, b) => a.order - b.order)
-        .flatMap(t => (t.deliverables || []).filter(d => (d.type === 'galeria' ? (d.images || []).length : d.value || d.label)).map(d => d.type === 'galeria'
+        .flatMap(t => (t.deliverables || []).filter(d => d.type !== 'checklist' && (d.type === 'galeria' ? (d.images || []).length : d.value || d.label)).map(d => d.type === 'galeria'
           ? { id: d.id, type: d.type, label: d.label, value: '', task: t.title, images: d.images.map(im => ({ id: im.id, w: im.w || 0, h: im.h || 0 })) }
           : { id: d.id, type: d.type, label: d.label, value: d.value, task: t.title })));
       const empresa = (db.companies || []).find(e => e.id === p.companyId);
@@ -180,8 +189,9 @@ const PortalRender = (() => {
                 ${s.tasks.length ? `<ul>${s.tasks.map(t => {
                   const done = t.status === 'concluida';
                   const doing = t.status === 'em_andamento' || t.status === 'em_revisao';
+                  const espera = !done && (t.waiting || []).length ? t.waiting : null;
                   const when = done ? (t.completedAt ? `Feita em ${fmtStamp(t.completedAt)}` : 'Feita') : t.dueDate ? `Até ${fmtDate(t.dueDate)}` : '';
-                  return `<li class="${done ? 'done' : doing ? 'doing' : ''}"><span class="mk">${icon('check', 12)}</span><span class="nm">${esc(t.title)}</span><span class="dt">${when}</span></li>`;
+                  return `<li class="${done ? 'done' : espera ? 'waiting' : doing ? 'doing' : ''}"><span class="mk">${icon(espera ? 'lock' : 'check', 12)}</span><span class="nm">${esc(t.title)}${espera ? `<small class="espera-cli">Aguardando: ${espera.map(esc).join(', ')}</small>` : ''}</span><span class="dt">${when}</span></li>`;
                 }).join('')}</ul>` : '<p class="muted" style="font-size:14px">Tarefas a definir.</p>'}
               </div>`).join('')}
           </div>
@@ -359,5 +369,5 @@ const PortalRender = (() => {
     }
   }, true);
 
-  return { build, render, safeUrl, handleClick, progressoLado, progressoFatos, trilha, galeriaGrade, usarImagens, preencherImagens, esquecerImagem, abrirZoom };
+  return { build, render, safeUrl, handleClick, progressoLado, progressoFatos, trilha, galeriaGrade, entrega: deliv, usarImagens, preencherImagens, esquecerImagem, abrirZoom };
 })();
