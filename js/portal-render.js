@@ -34,7 +34,9 @@ const PortalRender = (() => {
           .map(t => ({ title: t.title, status: t.status, dueDate: t.dueDate || '', completedAt: t.completedAt || null })),
       }));
       const deliverables = stages.flatMap(s => db.tasks.filter(t => t.stageId === s.id).sort((a, b) => a.order - b.order)
-        .flatMap(t => (t.deliverables || []).filter(d => d.value || d.label).map(d => ({ id: d.id, type: d.type, label: d.label, value: d.value, task: t.title }))));
+        .flatMap(t => (t.deliverables || []).filter(d => (d.type === 'galeria' ? (d.images || []).length : d.value || d.label)).map(d => d.type === 'galeria'
+          ? { id: d.id, type: d.type, label: d.label, value: '', task: t.title, images: d.images.map(im => ({ id: im.id, w: im.w || 0, h: im.h || 0 })) }
+          : { id: d.id, type: d.type, label: d.label, value: d.value, task: t.title })));
       const empresa = (db.companies || []).find(e => e.id === p.companyId);
       return { id: p.id, name: p.name, company: empresa ? empresa.name : '', description: p.description || '', status: p.status, startDate: p.startDate || '', dueDate: p.dueDate || '', stages: stageData, deliverables };
     });
@@ -116,10 +118,17 @@ const PortalRender = (() => {
       <div class="pipe-list">${data.map(s => `<button class="pl-card pl-${s.state}" data-act="portal-stage" data-id="${s.id}"><span class="pl-name"><span class="pl-num">${s.index}</span><span class="pl-txt">${esc(s.name)}</span></span><span class="pl-meta">${s.meta}</span><span class="pl-bar"><i style="width:${s.pct}%"></i></span></button>`).join('')}</div>`;
   }
 
+  /* Miniaturas de uma galeria. As imagens chegam depois, por preencherImagens. */
+  function galeriaGrade(d, extra = '') {
+    const n = d.images.length;
+    return `<div class="galeria" data-galeria="${esc(d.id)}" data-nome="${esc(d.label || 'Galeria')}">${d.images.map((im, k) => `<div class="gal-thumb"><button class="gal-item" data-act="zoom" data-id="${esc(d.id)}" data-i="${k}" aria-label="Ver a foto ${k + 1} de ${n}"><img data-img="${esc(im.id)}" alt="Foto ${k + 1} de ${n}${d.label ? ': ' + esc(d.label) : ''}"${im.w && im.h ? ` style="aspect-ratio:${im.w}/${im.h}"` : ''}></button>${extra ? extra(im, k) : ''}</div>`).join('')}</div>`;
+  }
+
   function deliv(d) {
-    const ic = d.type === 'link' ? 'link' : d.type === 'acesso' ? 'key' : 'text';
-    const name = d.label || (d.type === 'link' ? 'Link' : d.type === 'acesso' ? 'Acesso' : 'Texto');
+    const ic = d.type === 'link' ? 'link' : d.type === 'acesso' ? 'key' : d.type === 'galeria' ? 'image' : 'text';
+    const name = d.label || (d.type === 'link' ? 'Link' : d.type === 'acesso' ? 'Acesso' : d.type === 'galeria' ? 'Galeria' : 'Texto');
     const head = `<div class="h"><span class="deliv-type">${icon(ic, 15)}</span><b>${esc(name)}</b>${d.type === 'acesso' ? `<button class="icon-btn sm ghost no-print" data-act="reveal" data-id="${esc(d.id)}" title="Mostrar ou esconder" aria-label="Mostrar ou esconder o acesso">${icon('eye', 15)}</button>` : ''}</div><span class="from">Da tarefa: ${esc(d.task)}</span>`;
+    if (d.type === 'galeria') return `<div class="pdeliv pgaleria">${head}${galeriaGrade(d)}<p class="gal-dica no-print">${icon('zoomin', 13)} ${d.images.length} ${d.images.length === 1 ? 'foto' : 'fotos'}. Toque numa foto para ver em tela cheia.</p></div>`;
     if (d.type === 'link') return `<div class="pdeliv">${head}<a class="open" href="${esc(safeUrl(d.value))}" target="_blank" rel="noopener">${icon('external', 14)} Abrir link</a></div>`;
     return `<div class="pdeliv">${head}<pre id="rv-${esc(d.id)}" class="${d.type === 'acesso' ? 'masked' : ''}">${esc(d.value)}</pre></div>`;
   }
@@ -189,6 +198,7 @@ const PortalRender = (() => {
     const act = el.dataset.act, id = el.dataset.id;
     if (act === 'reveal') { const pre = document.getElementById('rv-' + id); if (pre) pre.classList.toggle('masked'); return true; }
     if (act === 'print') { window.print(); return true; }
+    if (act === 'zoom') { abrirZoom(id, Number(el.dataset.i) || 0); return true; }
     if (act === 'portal-stage') {
       const target = document.getElementById('pstage-' + id);
       if (target) {
@@ -200,5 +210,154 @@ const PortalRender = (() => {
     return false;
   }
 
-  return { build, render, safeUrl, handleClick, progressoLado, progressoFatos, trilha };
+  /* ---------- Imagens das galerias ----------
+     Cada página diz de onde vêm as imagens: o sistema lê do navegador, o link do cliente lê do Supabase.
+     carregador(ids, completa) devolve { id: endereço da imagem }. */
+  let carregador = null;
+  const cache = { mini: new Map(), cheia: new Map() };
+  function usarImagens(fn) { carregador = fn; }
+  async function buscar(ids, cheia) {
+    const c = cheia ? cache.cheia : cache.mini;
+    const faltam = [...new Set(ids)].filter(id => !c.has(id));
+    if (faltam.length && carregador) {
+      for (let i = 0; i < faltam.length; i += 30) {
+        try { const r = await carregador(faltam.slice(i, i + 30), cheia) || {}; Object.entries(r).forEach(([k, v]) => { if (v) c.set(k, v); }); }
+        catch (e) { /* tenta de novo na próxima vez */ }
+      }
+    }
+    return ids.map(id => c.get(id) || null);
+  }
+  function esquecerImagem(id) { cache.mini.delete(id); cache.cheia.delete(id); }
+  async function preencherImagens(root) {
+    if (!root) return;
+    const imgs = [...root.querySelectorAll('img[data-img]:not([src])')];
+    if (!imgs.length) return;
+    const srcs = await buscar(imgs.map(im => im.dataset.img), false);
+    imgs.forEach((im, k) => {
+      if (srcs[k]) im.src = srcs[k];
+      else { const b = im.closest('.gal-item'); if (b) { b.classList.add('sem-imagem'); b.title = 'Foto ainda não disponível'; } }
+    });
+  }
+
+  /* ---------- Zoom: uma imagem por vez, em tela cheia ---------- */
+  let zoom = null;
+  function abrirZoom(galId, inicio) {
+    const grade = document.querySelector(`.galeria[data-galeria="${CSS.escape(galId)}"]`);
+    if (!grade) return;
+    const ids = [...grade.querySelectorAll('img[data-img]')].map(im => im.dataset.img);
+    if (!ids.length) return;
+    fecharZoom();
+    const nome = grade.dataset.nome || 'Galeria';
+    const toque = matchMedia('(hover: none)').matches;
+    const el = document.createElement('div');
+    el.className = 'zoom';
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', nome);
+    el.innerHTML = `
+      <div class="zoom-topo">
+        <span class="zoom-conta" aria-live="polite"></span>
+        <span class="zoom-nome">${esc(nome)}</span>
+        <button class="zoom-btn" data-z="ampliar" aria-label="Aproximar">${icon('zoomin', 18)}</button>
+        <button class="zoom-btn" data-z="fechar" aria-label="Fechar (Esc)">${icon('x', 20)}</button>
+      </div>
+      <div class="zoom-palco"><img class="zoom-img" alt=""></div>
+      ${ids.length > 1 ? `<button class="zoom-nav ant" data-z="ant" aria-label="Foto anterior">${icon('left', 26)}</button><button class="zoom-nav prox" data-z="prox" aria-label="Próxima foto">${icon('right', 26)}</button>` : ''}
+      <p class="zoom-dica">${toque ? `${ids.length > 1 ? 'Deslize para passar. ' : ''}Toque na foto para aproximar.` : `${ids.length > 1 ? 'Use as setas para passar. ' : ''}Clique na foto para aproximar.`}</p>`;
+    document.body.appendChild(el);
+    document.documentElement.classList.add('zoom-aberto');
+    const z = zoom = { el, ids, i: 0, nome, volta: document.activeElement, ampliado: false,
+      palco: el.querySelector('.zoom-palco'), img: el.querySelector('.zoom-img') };
+
+    el.addEventListener('click', e => {
+      const b = e.target.closest('[data-z]');
+      if (b) { const a = b.dataset.z; if (a === 'fechar') fecharZoom(); else if (a === 'ant') ir(-1); else if (a === 'prox') ir(1); else if (a === 'ampliar') ampliar(!z.ampliado); return; }
+      if (e.target === z.img) { if (!z.arrastou) ampliar(!z.ampliado, e); return; }
+      if (e.target === z.palco && !z.ampliado) fecharZoom();
+    });
+    // Arrastar para ver partes da imagem aproximada (mouse) e deslizar para trocar (toque)
+    let ini = null;
+    z.palco.addEventListener('pointerdown', e => {
+      ini = { x: e.clientX, y: e.clientY, sl: z.palco.scrollLeft, st: z.palco.scrollTop, tipo: e.pointerType };
+      z.arrastou = false;
+    });
+    z.palco.addEventListener('pointermove', e => {
+      if (!ini) return;
+      const dx = e.clientX - ini.x, dy = e.clientY - ini.y;
+      if (Math.abs(dx) + Math.abs(dy) > 6) z.arrastou = true;
+      if (z.ampliado && ini.tipo === 'mouse') { z.palco.scrollLeft = ini.sl - dx; z.palco.scrollTop = ini.st - dy; z.palco.classList.add('arrastando'); }
+    });
+    const fim = e => {
+      if (!ini) return;
+      const dx = e.clientX - ini.x, dy = e.clientY - ini.y;
+      if (!z.ampliado && ini.tipo !== 'mouse' && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) ir(dx < 0 ? 1 : -1);
+      ini = null; z.palco.classList.remove('arrastando');
+      setTimeout(() => { z.arrastou = false; }, 0);
+    };
+    z.palco.addEventListener('pointerup', fim);
+    z.palco.addEventListener('pointercancel', () => { ini = null; z.palco.classList.remove('arrastando'); });
+    mostrar(Math.max(0, Math.min(inicio, ids.length - 1)));
+    el.querySelector('[data-z="fechar"]').focus();
+  }
+  async function mostrar(i) {
+    const z = zoom; if (!z) return;
+    z.i = i; ampliar(false);
+    z.el.querySelector('.zoom-conta').textContent = z.ids.length > 1 ? `${i + 1} de ${z.ids.length}` : '';
+    z.img.alt = `Foto ${i + 1} de ${z.ids.length}: ${z.nome}`;
+    const id = z.ids[i];
+    const [mini] = await buscar([id], false);
+    if (zoom !== z || z.i !== i) return;
+    if (mini && !cache.cheia.has(id)) { z.img.src = mini; z.el.classList.add('carregando'); }
+    const [cheia] = await buscar([id], true);
+    if (zoom !== z || z.i !== i) return;
+    z.el.classList.remove('carregando');
+    if (cheia) z.img.src = cheia;
+    else if (!mini) z.el.classList.add('sem-imagem');
+    // Já busca as vizinhas para a troca ser instantânea
+    const viz = [z.ids[i + 1], z.ids[i - 1]].filter(Boolean);
+    if (viz.length) buscar(viz, true);
+  }
+  function ir(passo) {
+    const z = zoom; if (!z || z.ids.length < 2) return;
+    z.el.classList.remove('sem-imagem');
+    mostrar((z.i + passo + z.ids.length) % z.ids.length);
+  }
+  function ampliar(sim, ev) {
+    const z = zoom; if (!z) return;
+    const { img, palco } = z;
+    const r = img.getBoundingClientRect();
+    z.ampliado = !!sim;
+    z.el.classList.toggle('ampliado', z.ampliado);
+    const b = z.el.querySelector('[data-z="ampliar"]');
+    b.innerHTML = icon(z.ampliado ? 'zoomout' : 'zoomin', 18);
+    b.setAttribute('aria-label', z.ampliado ? 'Afastar' : 'Aproximar');
+    if (!z.ampliado) { img.style.width = ''; palco.scrollTo(0, 0); return; }
+    const alvo = Math.min(4000, Math.max(img.naturalWidth || 0, r.width * 2));
+    img.style.width = alvo + 'px';
+    // Mantém o ponto clicado no centro da tela
+    const fx = ev ? (ev.clientX - r.left) / r.width : 0.5, fy = ev ? (ev.clientY - r.top) / r.height : 0.5;
+    const alt = alvo * (r.height / r.width);
+    palco.scrollLeft = fx * alvo - palco.clientWidth / 2;
+    palco.scrollTop = fy * alt - palco.clientHeight / 2;
+  }
+  function fecharZoom() {
+    const z = zoom; if (!z) return;
+    zoom = null; z.el.remove();
+    document.documentElement.classList.remove('zoom-aberto');
+    if (z.volta && z.volta.focus && document.contains(z.volta)) z.volta.focus();
+  }
+  document.addEventListener('keydown', e => {
+    if (!zoom) return;
+    const k = e.key;
+    if (k === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); if (zoom.ampliado) ampliar(false); else fecharZoom(); }
+    else if (k === 'ArrowRight') { e.preventDefault(); e.stopImmediatePropagation(); ir(1); }
+    else if (k === 'ArrowLeft') { e.preventDefault(); e.stopImmediatePropagation(); ir(-1); }
+    else if (k === '+' || k === '=') { e.preventDefault(); ampliar(true); }
+    else if (k === '-') { e.preventDefault(); ampliar(false); }
+    else if (k === 'Tab') {
+      const f = [...zoom.el.querySelectorAll('button')];
+      const i = f.indexOf(document.activeElement);
+      e.preventDefault(); f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+    }
+  }, true);
+
+  return { build, render, safeUrl, handleClick, progressoLado, progressoFatos, trilha, galeriaGrade, usarImagens, preencherImagens, esquecerImagem, abrirZoom };
 })();

@@ -4,13 +4,25 @@
   const view = document.getElementById('view');
   const CFG = window.PORTAL_CONFIG;
   let lastJson = '';
+  const tokenAtual = () => decodeURIComponent((location.hash || '').replace(/^#\/?/, '')).trim();
+
+  // Prints das entregas: só vêm as imagens que aparecem no link deste cliente.
+  PortalRender.usarImagens(async (ids, cheia) => {
+    const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/portal_images_get`, {
+      method: 'POST',
+      headers: { apikey: CFG.supabaseKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_token: tokenAtual(), p_ids: ids, p_full: !!cheia }),
+    });
+    if (!r.ok) throw new Error(String(r.status));
+    return r.json();
+  });
 
   function message(title, text) {
     view.innerHTML = `<div class="portal-msg">${BRAND_MARK}<h1>${title}</h1><p>${text}</p></div>`;
   }
 
   async function load(first) {
-    const token = decodeURIComponent((location.hash || '').replace(/^#\/?/, '')).trim();
+    const token = tokenAtual();
     if (!token) { message('Link incompleto', 'Este endereço está sem o código do cliente. Peça o link de acompanhamento novamente para quem cuida do seu projeto.'); return; }
     try {
       const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/portal_get`, {
@@ -31,6 +43,7 @@
       const y = window.scrollY;
       Cosmos.aplicar(res.data.tema);
       view.innerHTML = PortalRender.render(res.data, { updatedAt: res.updated_at });
+      PortalRender.preencherImagens(view);
       document.title = `Acompanhamento | ${res.data.client.name}`;
       if (!first) window.scrollTo(0, y);
     } catch (e) {

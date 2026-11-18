@@ -696,7 +696,7 @@ body:not(.tela-painel):not(.portal-mode) #cosmos .cena { opacity: .55; }
 .stage.collapsed .task-list, .stage.collapsed .stage-add { display: none; }
 .task-list { border-top: 1px solid var(--borda); }
 .task {
-  display: grid; grid-template-columns: 18px auto minmax(0, 1fr) 150px 130px 36px 124px; gap: 14px; align-items: center;
+  display: grid; grid-template-columns: 18px auto auto minmax(0, 1fr) 150px 130px 36px 124px; gap: 14px; align-items: center;
   padding: 12px 22px 12px 12px; border-bottom: 1px solid var(--borda); cursor: pointer; transition: background .2s;
 }
 .task:hover, .trow:hover { background: linear-gradient(90deg, rgba(var(--acento-claro-rgb), .06), rgba(var(--claro-rgb), .025) 40%, transparent); }
@@ -998,7 +998,9 @@ body.portal-mode .view { max-width: 1180px; padding-top: 28px; padding-bottom: 6
 .pstage-meta .stage-esperado { margin-top: 0; }
 
 /* ============ Prioridade: arrastar tarefas ============ */
-.dica-ordem { display: inline-flex; align-items: center; gap: 6px; color: var(--texto-3); font-size: 13px; margin-top: 4px; }
+.dica-ordem { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; color: var(--texto-3); font-size: 13px; margin-top: 4px; }
+.dica-ordem > span { display: inline-flex; align-items: center; gap: 6px; }
+.dica-quadro { width: 13px; height: 13px; border-radius: 4px; border: 1.5px solid rgba(var(--claro-rgb), .4); flex: none; }
 .grip { width: 18px; height: 28px; display: grid; place-items: center; border-radius: 6px; color: var(--texto-3); opacity: .35; cursor: grab; touch-action: none; transition: opacity .2s, color .2s, background .2s; }
 .task:hover .grip, .grip:focus-visible { opacity: 1; }
 .grip:hover { color: var(--texto); background: rgba(var(--claro-rgb), .08); }
@@ -1011,7 +1013,10 @@ body.arrastando-tarefa .task-list.alvo { box-shadow: inset 3px 0 0 var(--brasa);
 @media (hover: none) { .grip { opacity: .7; } }
 
 /* ============ Seleção e edição em lote ============ */
-.sel-box { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; color: transparent; background: rgba(0, 0, 0, .34); border: 1.5px solid rgba(var(--claro-rgb), .22); transition: background .2s, border-color .2s; }
+.sel-box { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; color: transparent; background: rgba(0, 0, 0, .34); border: 1.5px solid rgba(var(--claro-rgb), .22); opacity: .45; transition: background .2s, border-color .2s, opacity .2s; }
+.task:hover .sel-box, .task.modo-sel .sel-box, .sel-box:focus-visible { opacity: 1; }
+.sel-box:hover { border-color: var(--brasa-clara); }
+@media (hover: none) { .sel-box { opacity: .85; } }
 .sel-box.on { background: rgba(var(--acento-rgb), .3); border-color: var(--brasa-clara); color: var(--brasa-quente); box-shadow: 0 0 12px -2px rgba(var(--acento-rgb), .8); }
 .task.selecionada { background: linear-gradient(90deg, rgba(var(--acento-rgb), .14), rgba(var(--acento-rgb), .04) 60%, transparent); }
 .lote {
@@ -1029,6 +1034,84 @@ body.arrastando-tarefa .task-list.alvo { box-shadow: inset 3px 0 0 var(--brasa);
 .lote [disabled] { opacity: .45; pointer-events: none; }
 @media (max-width: 991.98px) {
   .lote { left: 10px; right: 10px; translate: none; width: auto; bottom: 86px; }
+}
+
+/* ============ Galeria de prints e zoom ============ */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.gal-thumb { position: relative; min-width: 0; }
+.gal-item {
+  display: block; width: 100%; aspect-ratio: 4 / 3; padding: 0; border-radius: 12px; overflow: hidden; cursor: zoom-in;
+  background: var(--rebaixado-fundo); border: 1px solid rgba(var(--claro-rgb), .1);
+  transition: border-color .2s, box-shadow .2s, transform .25s var(--suave);
+}
+.gal-item img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; opacity: 0; transition: opacity .3s; }
+.gal-item img[src] { opacity: 1; }
+.gal-item:hover, .gal-item:focus-visible { border-color: rgba(var(--acento-claro-rgb), .6); box-shadow: 0 0 22px -8px rgba(var(--acento-rgb), .9); }
+.gal-item:active { transform: scale(.98); }
+.gal-item.sem-imagem { cursor: default; background: repeating-linear-gradient(135deg, rgba(var(--claro-rgb), .04) 0 8px, transparent 8px 16px), var(--rebaixado-fundo); }
+.gal-dica { font-size: 12.5px; color: var(--texto-3); display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.pgaleria { grid-column: 1 / -1; }
+/* Na página do cliente a galeria é um mosaico: a primeira foto em destaque, as outras em volta */
+.pgaleria .galeria { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 160px; grid-auto-flow: dense; gap: 8px; }
+.pgaleria .gal-thumb:first-child { grid-column: span 2; grid-row: span 2; }
+.pgaleria .galeria:has(.gal-thumb:only-child) { grid-template-columns: minmax(0, 560px); grid-auto-rows: 320px; }
+.pgaleria .gal-thumb:only-child { grid-column: auto; grid-row: auto; }
+.pgaleria .gal-item { aspect-ratio: auto; height: 100%; border-radius: 14px; }
+.pgaleria .gal-item img { transition: opacity .3s, transform .5s var(--suave); }
+.pgaleria .gal-item:hover img { transform: scale(1.04); }
+@media (max-width: 767.98px) {
+  .pgaleria .galeria { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 120px; }
+  .pgaleria .gal-thumb:first-child { grid-column: span 2; grid-row: span 2; }
+  .pgaleria .galeria:has(.gal-thumb:only-child) { grid-template-columns: 1fr; grid-auto-rows: 240px; }
+}
+/* No painel da tarefa */
+.gal-edit { display: grid; gap: 10px; border-radius: 14px; transition: background .2s, box-shadow .2s; }
+.gal-edit .galeria { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.gal-edit.soltar { background: rgba(var(--acento-rgb), .08); box-shadow: 0 0 0 1.5px var(--brasa-clara); }
+.gal-edit.enviando { opacity: .6; pointer-events: none; }
+.gal-x {
+  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  color: #fff; background: rgba(2, 4, 10, .72); border: 1px solid rgba(255, 255, 255, .18); opacity: 0; transition: opacity .2s, background .2s;
+}
+.gal-thumb:hover .gal-x, .gal-x:focus-visible { opacity: 1; }
+.gal-x:hover { background: var(--critico); }
+@media (hover: none) { .gal-x { opacity: 1; } }
+.gal-add {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 10px; border-radius: 12px; cursor: pointer;
+  color: var(--brasa-clara); font-size: 14px; font-weight: 600; border: 1.5px dashed rgba(var(--acento-claro-rgb), .4); transition: background .2s, border-color .2s;
+}
+.gal-add:hover, .gal-add:focus-within { background: rgba(var(--acento-rgb), .08); border-color: var(--brasa-clara); }
+/* Zoom em tela cheia */
+html.zoom-aberto { overflow: hidden; }
+.zoom { position: fixed; inset: 0; z-index: 200; background: rgba(2, 3, 8, .94); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: fade .2s ease; color: #fff; }
+.zoom-topo { position: absolute; z-index: 2; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: 12px 14px 12px 20px; background: linear-gradient(rgba(2, 3, 8, .85), transparent); }
+.zoom-conta { font-family: var(--fonte-titulo, inherit); font-size: 15px; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, .9); }
+.zoom-nome { flex: 1; min-width: 0; font-size: 14px; color: rgba(255, 255, 255, .6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zoom-btn, .zoom-nav { display: grid; place-items: center; border-radius: 50%; color: #fff; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); transition: background .2s; }
+.zoom-btn { width: 42px; height: 42px; }
+.zoom-btn:hover, .zoom-nav:hover { background: rgba(255, 255, 255, .18); }
+.zoom-palco { position: absolute; inset: 66px 0 40px; overflow: auto; display: grid; place-items: center; padding: 0 76px; overscroll-behavior: contain; }
+.zoom-img { display: block; max-width: 100%; max-height: calc(100vh - 106px); width: auto; height: auto; cursor: zoom-in; border-radius: 6px; box-shadow: 0 30px 80px -20px #000; user-select: none; -webkit-user-drag: none; transition: filter .3s; }
+.zoom.carregando .zoom-img { filter: blur(2px); }
+.zoom.ampliado .zoom-palco { display: block; padding: 0; cursor: grab; }
+.zoom.ampliado .zoom-palco.arrastando { cursor: grabbing; }
+.zoom.ampliado .zoom-img { max-width: none; max-height: none; height: auto; margin: 0 auto; cursor: zoom-out; border-radius: 0; }
+.zoom.sem-imagem .zoom-palco::after { content: "Esta imagem ainda não está disponível."; color: rgba(255, 255, 255, .7); }
+.zoom-nav { position: absolute; z-index: 2; top: 50%; translate: 0 -50%; width: 52px; height: 52px; }
+.zoom-nav.ant { left: 14px; } .zoom-nav.prox { right: 14px; }
+.zoom.ampliado .zoom-nav { opacity: .35; }
+.zoom-dica { position: absolute; bottom: 10px; left: 0; right: 0; margin: 0; text-align: center; font-size: 12.5px; color: rgba(255, 255, 255, .5); }
+@media (max-width: 767.98px) {
+  .galeria { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+  .zoom-palco { padding: 0 8px; }
+  .zoom-nav { top: auto; bottom: 44px; translate: none; width: 46px; height: 46px; }
+  .zoom-palco { bottom: 100px; }
+  .zoom-img { max-height: calc(100vh - 170px); }
+}
+@media print {
+  .zoom, .gal-dica, .gal-x, .gal-add { display: none !important; }
+  .gal-item { break-inside: avoid; }
 }
 
 /* ============ Topo do projeto: o progresso na primeira tela ============ */
@@ -1222,7 +1305,7 @@ body.arrastando-tarefa .task-list.alvo { box-shadow: inset 3px 0 0 var(--brasa);
   .trow { grid-template-columns: auto minmax(0, 1fr) auto; }
   .trow > :nth-child(3), .trow > :nth-child(4) { display: none; }
   .trow.head { display: none; }
-  .task { grid-template-columns: 18px auto minmax(0, 1fr) auto; }
+  .task { grid-template-columns: 18px auto auto minmax(0, 1fr) auto; gap: 10px; }
   .task > .who-cell, .task > .deliv-count, .task > .due { display: none; }
   .proj-hero { grid-template-columns: 1fr; }
   .board { grid-template-columns: repeat(4, 260px); }
