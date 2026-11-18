@@ -52,6 +52,7 @@ const ICONS = {
   left: '<path d="m15 18-6-6 6-6"/>',
   listcheck: '<path d="M11 6h10M11 12h10M11 18h10"/><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11"/><rect x="3" y="16" width="4" height="4" rx="1"/>',
   lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>',
+  more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
   paperclip: '<path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
 };
 // Marca: o orbe de luz da identidade Brasa (muda de forma em cada tema pelo CSS).
@@ -67,28 +68,95 @@ const Charts = (() => {
   const escT = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   /* Anel de progresso circular */
+  /* Anel de progresso como um instrumento: escala graduada, arco em segmentos, ponteiro de luz e disco central.
+     Tudo em SVG estático (sem canvas): um filtro de brilho por anel e uma única animação de entrada. */
+  const P = (c, r, g) => { const a = (g * Math.PI) / 180; return [c + r * Math.cos(a), c + r * Math.sin(a)]; };
+  const arco = (c, r, g0, g1) => { const [x0, y0] = P(c, r, g0), [x1, y1] = P(c, r, g1); return `M${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 ${g1 - g0 > 180 ? 1 : 0} 1 ${x1.toFixed(2)},${y1.toFixed(2)}`; };
   function ring(pct, { size = 150, stroke = 11, label, sub, animate = false } = {}) {
-    const c = size / 2, r = c - stroke / 2 - 8, C = 2 * Math.PI * r, id = gid('rg');
-    const len = (C * Math.max(0, Math.min(100, pct))) / 100;
-    const arc = pct > 0
-      ? `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="url(#${id})" stroke-width="${stroke}" stroke-dasharray="${len} ${C}" stroke-linecap="round" transform="rotate(-90 ${c} ${c})" filter="url(#${id}f)" opacity=".75" class="${animate ? 'draw' : ''}" style="--len:${len};--C:${C}"/>
-         <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="url(#${id})" stroke-width="${stroke}" stroke-dasharray="${len} ${C}" stroke-linecap="round" transform="rotate(-90 ${c} ${c})" class="${animate ? 'draw' : ''}" style="--len:${len};--C:${C}"/>`
-      : '';
-    return `<svg class="ring" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${pct}% concluído">
+    const v = Math.max(0, Math.min(100, Number(pct) || 0));
+    const c = size / 2, id = gid('rg'), grande = size >= 170, pequeno = size < 120;
+    const INI = 135, VAR = 270, fim = INI + (VAR * v) / 100; // medidor de 270°, aberto embaixo
+    const rFora = c - 2, rEsc = c - (pequeno ? 6 : 9), lEsc = pequeno ? 3 : grande ? 7 : 5;
+    const sw = pequeno ? Math.max(5, stroke - 2) : stroke;
+    const rArco = rEsc - lEsc - sw / 2 - (pequeno ? 3 : 6);
+    const rDisco = rArco - sw / 2 - (pequeno ? 4 : 9);
+    // Escala: risquinhos a cada 2% (5% nos pequenos); os de 25% são maiores
+    const passo = pequeno ? 5 : 2;
+    let escala = '';
+    for (let k = 0; k <= 100; k += passo) {
+      const g = INI + (VAR * k) / 100, maior = k % 25 === 0;
+      const [x0, y0] = P(c, rEsc, g), [x1, y1] = P(c, rEsc - (maior ? lEsc : lEsc * 0.55), g);
+      escala += `<line x1="${x0.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${y1.toFixed(2)}" class="esc ${k <= v && v > 0 ? 'acesa' : ''} ${maior ? 'maior' : ''}"/>`;
+    }
+    // Arco: em segmentos nos grandes, contínuo nos pequenos
+    let trilho = '', aceso = '';
+    if (pequeno) {
+      trilho = `<path d="${arco(c, rArco, INI, INI + VAR)}" class="arco-trilho" stroke-width="${sw}" fill="none" stroke-linecap="round"/>`;
+      if (v > 0) aceso = `<path d="${arco(c, rArco, INI, Math.max(INI + 0.5, fim))}" stroke="url(#${id})" stroke-width="${sw}" fill="none" stroke-linecap="round"/>`;
+    } else {
+      const N = grande ? 54 : 40, fatia = VAR / N, vao = grande ? 1.5 : 1.8;
+      for (let k = 0; k < N; k++) {
+        const g0 = INI + k * fatia + vao / 2, g1 = INI + (k + 1) * fatia - vao / 2;
+        const d = `<path d="${arco(c, rArco, g0, g1)}" stroke-width="${sw}" fill="none"`;
+        if (g1 <= fim + 0.01 && v > 0) aceso += `${d} stroke="url(#${id})"/>`; else trilho += `${d} class="arco-trilho"/>`;
+      }
+    }
+    // Ponteiro: ponto de luz na ponta do arco e linha fina até o disco
+    const [px, py] = P(c, rArco, v > 0 ? fim : INI), [qx, qy] = P(c, rDisco + 2, v > 0 ? fim : INI);
+    const ponteiro = v > 0 ? `<line x1="${px.toFixed(2)}" y1="${py.toFixed(2)}" x2="${qx.toFixed(2)}" y2="${qy.toFixed(2)}" class="ponteiro"/><circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${pequeno ? 2.6 : 4}" class="ponteiro-luz" filter="url(#${id}b)"/><circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${pequeno ? 1.6 : 2.4}" class="ponteiro-ponto"/>` : '';
+    const [ex0, ey0] = P(c, rArco, INI), [ex1, ey1] = P(c, rArco, INI + VAR);
+    return `<svg class="ring instrumento ${animate ? 'entrar' : ''}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${label ?? v}${label ? '' : '%'} ${escT(sub || 'concluído')}">
       <defs>
-        <linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--acc-3)"/><stop offset=".55" style="stop-color:var(--acc)"/><stop offset="1" style="stop-color:var(--acc-2)"/></linearGradient>
-        <filter id="${id}f" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${stroke * 0.55}"/></filter>
+        <linearGradient id="${id}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" style="stop-color:var(--acc-2)"/><stop offset=".6" style="stop-color:var(--acc)"/><stop offset="1" style="stop-color:var(--acc-3)"/></linearGradient>
+        <radialGradient id="${id}h"><stop offset=".62" style="stop-color:var(--acc);stop-opacity:0"/><stop offset=".8" style="stop-color:var(--acc);stop-opacity:.28"/><stop offset="1" style="stop-color:var(--acc);stop-opacity:0"/></radialGradient>
+        <radialGradient id="${id}d" cx=".42" cy=".36" r=".75"><stop offset="0" stop-color="#1A2233"/><stop offset=".7" stop-color="#05080F"/><stop offset="1" stop-color="#020409"/></radialGradient>
+        <linearGradient id="${id}r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--acc-3);stop-opacity:.9"/><stop offset=".45" style="stop-color:var(--acc);stop-opacity:.12"/><stop offset="1" style="stop-color:var(--acc);stop-opacity:0"/></linearGradient>
+        <filter id="${id}b" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="${pequeno ? 1.6 : 3}"/></filter>
+        <filter id="${id}g" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${pequeno ? 2 : sw * 0.45}"/></filter>
       </defs>
-      <circle cx="${c}" cy="${c}" r="${r}" fill="none" class="ring-track" stroke-width="${stroke}"/>
-      ${arc}
-      <text x="${c}" y="${c + (sub ? 2 : size * 0.07)}" text-anchor="middle" class="ring-num" style="font-size:${size * 0.24}px">${label ?? pct}<tspan class="ring-pct" style="font-size:${size * 0.11}px" dx="2">${label ? '' : '%'}</tspan></text>
-      ${sub ? `<text x="${c}" y="${c + size * 0.15}" text-anchor="middle" class="ring-sub" style="font-size:${Math.max(10, size * 0.075)}px">${escT(sub)}</text>` : ''}
+      <circle cx="${c}" cy="${c}" r="${rFora}" class="aro"/>
+      <g class="escala">${escala}</g>
+      ${pequeno ? '' : `<circle cx="${ex0.toFixed(2)}" cy="${ey0.toFixed(2)}" r="2" class="fim-arco"/><circle cx="${ex1.toFixed(2)}" cy="${ey1.toFixed(2)}" r="2" class="fim-arco"/>`}
+      <g class="trilho">${trilho}</g>
+      <g class="brilho" filter="url(#${id}g)" opacity=".7">${aceso}</g>
+      <g class="aceso">${aceso}</g>
+      <circle cx="${c}" cy="${c}" r="${rDisco + (pequeno ? 3 : 7)}" fill="url(#${id}h)"/>
+      <circle cx="${c}" cy="${c}" r="${rDisco}" fill="url(#${id}d)"/>
+      <circle cx="${c}" cy="${c}" r="${rDisco - 0.5}" fill="none" stroke="url(#${id}r)" stroke-width="${pequeno ? 1 : 1.4}"/>
+      ${ponteiro}
+      <text x="${c}" y="${c + (sub ? (pequeno ? 2 : size * 0.02) : size * 0.07)}" text-anchor="middle" class="ring-num" style="font-size:${size * (pequeno ? 0.22 : 0.2)}px">${label ?? v}<tspan class="ring-pct" style="font-size:${size * 0.085}px" dx="2">${label ? '' : '%'}</tspan></text>
+      ${sub ? `<text x="${c}" y="${c + size * (pequeno ? 0.15 : 0.12)}" text-anchor="middle" class="ring-sub" style="font-size:${Math.max(9, size * 0.058)}px">${escT(sub)}</text>` : ''}
+    </svg>`;
+  }
+
+  /* Anéis concêntricos: um por categoria (ex.: situação das tarefas), cada um com a sua proporção */
+  function aneis(segs, { size = 190, center = '', sub = '' } = {}) {
+    const c = size / 2, total = segs.reduce((a, s) => a + s.value, 0) || 1, n = segs.length;
+    // Os anéis ocupam a faixa entre a moldura e um miolo livre para o total
+    const rMax = c - 9, rMin = size * 0.23, gap = (rMax - rMin) / n, sw = Math.max(3, Math.min(8, gap - 3.5));
+    const r0 = rMax - sw / 2;
+    let out = `<circle cx="${c}" cy="${c}" r="${c - 1.5}" class="aro"/>`;
+    for (let k = 0; k < 72; k++) { const g = -90 + k * 5, maior = k % 18 === 0; const [x0, y0] = P(c, c - 1.5, g), [x1, y1] = P(c, c - (maior ? 5.5 : 3.5), g); out += `<line x1="${x0.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${y1.toFixed(2)}" class="esc ${maior ? 'maior' : ''}"/>`; }
+    segs.forEach((s, k) => {
+      const r = r0 - k * gap, frac = s.value / total, g1 = -90 + Math.max(0, Math.min(359.4, frac * 360));
+      out += `<circle cx="${c}" cy="${c}" r="${r}" class="arco-trilho" stroke-width="${sw}" fill="none"/>`;
+      if (s.value > 0) {
+        const d = frac >= 0.999 ? `M${c},${c - r} A${r},${r} 0 1 1 ${c - 0.01},${c - r}` : arco(c, r, -90, g1);
+        const [px, py] = P(c, r, g1);
+        out += `<path d="${d}" fill="none" stroke-width="${sw}" stroke-linecap="round" style="stroke:${s.color}" data-tip="${escT(s.label)}: ${s.value} (${Math.round(frac * 100)}%)"/><circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="${sw * 0.32}" class="ponteiro-ponto"/>`;
+      }
+    });
+    const rIn = rMin - 3;
+    return `<svg class="donut aneis" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img">${out}
+      <circle cx="${c}" cy="${c}" r="${Math.max(10, rIn)}" class="disco-aneis"/>
+      <text x="${c}" y="${c + 3}" text-anchor="middle" class="ring-num" style="font-size:${size * 0.15}px">${escT(center)}</text>
+      <text x="${c}" y="${c + size * 0.1}" text-anchor="middle" class="ring-sub" style="font-size:${size * 0.058}px">${escT(sub)}</text>
     </svg>`;
   }
 
   /* Rosca com segmentos */
   function donut(segs, { size = 170, stroke = 16, center = '', sub = '' } = {}) {
-    const c = size / 2, r = c - stroke / 2 - 6, C = 2 * Math.PI * r;
+    const c = size / 2, r = c - stroke / 2 - 10, C = 2 * Math.PI * r;
     const total = segs.reduce((a, s) => a + s.value, 0);
     const live = segs.filter(s => s.value > 0);
     let off = 0;
@@ -99,7 +167,11 @@ const Charts = (() => {
       off += len;
       return out;
     }).join('') : '';
-    return `<svg class="donut" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img">
+    let moldura = `<circle cx="${c}" cy="${c}" r="${c - 1.5}" class="aro"/>`;
+    for (let k = 0; k < 60; k++) { const g = -90 + k * 6, maior = k % 15 === 0; const [x0, y0] = P(c, c - 1.5, g), [x1, y1] = P(c, c - (maior ? 5.5 : 3.5), g); moldura += `<line x1="${x0.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${y1.toFixed(2)}" class="esc ${maior ? 'maior' : ''}"/>`; }
+    return `<svg class="donut instrumento-rosca" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img">
+      ${moldura}
+      <circle cx="${c}" cy="${c}" r="${r - stroke / 2 - 4}" class="disco-aneis"/>
       <circle cx="${c}" cy="${c}" r="${r}" fill="none" class="ring-track" stroke-width="${stroke}"/>
       ${arcs}
       <text x="${c}" y="${c + 4}" text-anchor="middle" class="ring-num" style="font-size:${size * 0.2}px">${escT(center)}</text>
@@ -258,5 +330,8 @@ const Charts = (() => {
   }
   const legenda = series => `<div class="viz-legenda">${series.map(s => `<span><i style="background:${s.cor}${s.tracejado ? ';height:2px;border-radius:0' : ''}"></i>${escT(s.nome)}</span>`).join('')}</div>`;
 
-  return { ring, donut, bars, area, pipeline, linhas, colunas, legenda };
+  /* Trilho fino com escala e ponto de luz na ponta (barras de progresso do painel) */
+  const trilho = pct => `<span class="trilho-luz" style="--p:${Math.max(0, Math.min(100, pct))}%" role="img" aria-label="${pct}%"><i></i><b></b></span>`;
+
+  return { ring, donut, aneis, trilho, bars, area, pipeline, linhas, colunas, legenda };
 })();
