@@ -40,7 +40,8 @@ const ICONS = {
   flag: '<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>',
   paperclip: '<path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
 };
-const BRAND_MARK = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--acc-3)"/><stop offset="1" style="stop-color:var(--acc-2)"/></linearGradient></defs><g fill="url(#bm)"><path d="M12 1.5c2.6 3.1 2.6 6.9 0 10-2.6-3.1-2.6-6.9 0-10z"/><path d="M22.5 12c-3.1 2.6-6.9 2.6-10 0 3.1-2.6 6.9-2.6 10 0z"/><path d="M12 22.5c-2.6-3.1-2.6-6.9 0-10 2.6 3.1 2.6 6.9 0 10z"/><path d="M1.5 12c3.1-2.6 6.9-2.6 10 0-3.1 2.6-6.9 2.6-10 0z"/></g></svg>';
+// Marca: o orbe de luz da identidade Brasa (muda de forma em cada tema pelo CSS).
+const BRAND_MARK = '<span class="marca-ponto" aria-hidden="true"></span>';
 
 function icon(name, size = 18) {
   return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;

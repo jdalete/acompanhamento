@@ -38,7 +38,7 @@ const PortalRender = (() => {
     return {
       v: 1,
       business: (db.settings && db.settings.businessName) || '',
-      accent: (db.settings && db.settings.accent) || 'ambar',
+      tema: (db.settings && db.settings.tema) || 'interestelar',
       client: { name: c.name },
       projects,
     };
@@ -78,7 +78,7 @@ const PortalRender = (() => {
   function render(data, opts = {}) {
     const updated = opts.updatedAt ? new Date(opts.updatedAt) : new Date();
     const ps = data.projects || [];
-    const mark = BRAND_MARK.replace(/bm/g, 'bmp');
+    const mark = BRAND_MARK;
     return `
       <div class="portal-bar">
         <span class="brand">${mark}<span class="brand-text">${esc(data.business)}<small>Acompanhamento de projetos</small></span></span>
@@ -89,7 +89,7 @@ const PortalRender = (() => {
       </div>
       <section class="portal-hero">
         <p class="hello">Olá, ${esc(data.client.name)}</p>
-        <h1>${ps.length === 1 ? 'Acompanhe o seu projeto' : 'Acompanhe os seus projetos'}</h1>
+        <h1>${ps.length === 1 ? 'Acompanhe o seu projeto' : 'Acompanhe os seus projetos'}<span class="ponto">.</span></h1>
         <p>Aqui está o que você contratou, em que etapa cada projeto está e tudo o que já foi entregue. Atualizado em ${fmtLong(updated)}, às ${String(updated.getHours()).padStart(2, '0')}:${String(updated.getMinutes()).padStart(2, '0')}.</p>
       </section>
       ${ps.length ? ps.map(p => {

@@ -1,22 +1,43 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-tema="interestelar">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#02040A">
   <title>Acompanhamento de projetos</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500&family=Manrope:wght@400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css">
 </head>
-<body data-accent="ambar" class="portal-mode">
+<body class="portal-mode">
+  <div id="cosmos" aria-hidden="true">
+    <div class="camada cena cena-interestelar" data-prof="0.1">
+      <i class="nebulosa-borda nb1"></i><i class="nebulosa-borda nb2"></i>
+      <div class="via-coluna"><i class="via-brilho"></i><i class="via-estrelas" data-via-estrelas></i><i class="via-poeira"></i></div>
+      <i class="horizonte-luz"></i><i class="chao"></i>
+    </div>
+    <div class="camada cena cena-interestelar" data-prof="0.18"><i class="nuvem-nebulosa"></i></div>
+    <div class="camada cena cena-interestelar" data-prof="0.32">
+      <i class="planeta-escuro p1"><i class="lua"></i></i><i class="planeta-escuro p2"></i><i class="planeta-escuro p3"></i>
+      <i class="clarao c1"></i><i class="clarao c2"></i><i class="clarao c3"></i>
+    </div>
+    <div class="camada cena cena-abissal" data-prof="0.18"><i class="superficie"></i><i class="feixe f1"></i><i class="feixe f2"></i><i class="feixe f3"></i><i class="feixe f4"></i><i class="abismo"></i></div>
+    <div class="camada cena cena-digital" data-prof="0.22"><i class="sol-digital"></i><i class="horizonte-digital"></i><div class="grade-chao"></div></div>
+    <div class="camada cena cena-maison" data-prof="0.08"><i class="guilloche"></i><i class="luz-vitrine"></i></div>
+    <div class="camada poeira" data-prof="0.55"></div>
+    <div class="vinheta"></div>
+    <div class="grao"></div>
+  </div>
   <div class="app">
     <div class="main">
       <main class="view" id="view"><div class="portal-msg"><p>Carregando o acompanhamento…</p></div></main>
     </div>
   </div>
+  <script src="js/cosmos.js"></script>
   <script src="js/config-publico.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/portal-render.js"></script>

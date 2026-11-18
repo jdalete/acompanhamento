@@ -6,7 +6,7 @@
   let lastJson = '';
 
   function message(title, text) {
-    view.innerHTML = `<div class="portal-msg">${BRAND_MARK.replace(/bm/g, 'bmm')}<h1>${title}</h1><p>${text}</p></div>`;
+    view.innerHTML = `<div class="portal-msg">${BRAND_MARK}<h1>${title}</h1><p>${text}</p></div>`;
   }
 
   async function load(first) {
@@ -29,7 +29,7 @@
       if (json === lastJson) return;
       lastJson = json;
       const y = window.scrollY;
-      document.body.dataset.accent = res.data.accent || 'ambar';
+      Cosmos.aplicar(res.data.tema);
       view.innerHTML = PortalRender.render(res.data, { updatedAt: res.updated_at });
       document.title = `Acompanhamento | ${res.data.client.name}`;
       if (!first) window.scrollTo(0, y);
