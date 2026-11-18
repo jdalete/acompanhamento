@@ -19,6 +19,7 @@ const PortalRender = (() => {
     return 'https://' + v;
   }
 
+  const nomePessoa = (db, id) => { const m = id && (db.team || []).find(x => x.id === id); return m ? m.name : ''; };
   /* Tarefas que ainda prendem esta (nome, e o projeto quando é outro) */
   function aguardadas(db, t, p) {
     if (t.status === 'concluida') return [];
@@ -40,7 +41,7 @@ const PortalRender = (() => {
         expected: s.expected || '',
         dueDate: s.dueDate || '',
         tasks: db.tasks.filter(t => t.stageId === s.id).sort((a, b) => a.order - b.order)
-          .map(t => ({ title: t.title, status: t.status, dueDate: t.dueDate || '', completedAt: t.completedAt || null, waiting: aguardadas(db, t, p) })),
+          .map(t => ({ title: t.title, status: t.status, dueDate: t.dueDate || '', completedAt: t.completedAt || null, waiting: aguardadas(db, t, p), who: nomePessoa(db, t.assigneeId), reviewer: t.status === 'em_revisao' ? nomePessoa(db, t.reviewerId) : '' })),
       }));
       const deliverables = stages.flatMap(s => db.tasks.filter(t => t.stageId === s.id).sort((a, b) => a.order - b.order)
         .flatMap(t => (t.deliverables || []).filter(d => d.type !== 'checklist' && (d.type === 'galeria' ? (d.images || []).length : d.value || d.label)).map(d => d.type === 'galeria'
@@ -191,7 +192,7 @@ const PortalRender = (() => {
                   const doing = t.status === 'em_andamento' || t.status === 'em_revisao';
                   const espera = !done && (t.waiting || []).length ? t.waiting : null;
                   const when = done ? (t.completedAt ? `Feita em ${fmtStamp(t.completedAt)}` : 'Feita') : t.dueDate ? `Até ${fmtDate(t.dueDate)}` : '';
-                  return `<li class="${done ? 'done' : espera ? 'waiting' : doing ? 'doing' : ''}"><span class="mk">${icon(espera ? 'lock' : 'check', 12)}</span><span class="nm">${esc(t.title)}${espera ? `<small class="espera-cli">Aguardando: ${espera.map(esc).join(', ')}</small>` : ''}</span><span class="dt">${when}</span></li>`;
+                  return `<li class="${done ? 'done' : espera ? 'waiting' : doing ? 'doing' : ''}"><span class="mk">${icon(espera ? 'lock' : 'check', 12)}</span><span class="nm">${esc(t.title)}${espera ? `<small class="espera-cli">Aguardando: ${espera.map(esc).join(', ')}</small>` : ''}${t.who || t.reviewer ? `<small class="quem-cli">${t.who ? `Responsável: ${esc(t.who)}` : ''}${t.who && t.reviewer ? '<br>' : ''}${t.reviewer ? `Em revisão com ${esc(t.reviewer)}` : ''}</small>` : ''}</span><span class="dt">${when}</span></li>`;
                 }).join('')}</ul>` : '<p class="muted" style="font-size:14px">Tarefas a definir.</p>'}
               </div>`).join('')}
           </div>

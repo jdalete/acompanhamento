@@ -95,7 +95,7 @@ const Charts = (() => {
     const gap = live.length > 1 ? 4 : 0;
     const arcs = total ? live.map(s => {
       const len = (C * s.value) / total;
-      const out = `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${stroke}" stroke-dasharray="${Math.max(len - gap, 0.5)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 ${c} ${c})" style="stroke:${s.color}"><title>${escT(s.label)}: ${s.value}</title></circle>`;
+      const out = `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${stroke}" stroke-dasharray="${Math.max(len - gap, 0.5)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 ${c} ${c})" style="stroke:${s.color}" data-tip="${escT(s.label)}: ${s.value} (${Math.round(s.value / total * 100)}%)"></circle>`;
       off += len;
       return out;
     }).join('') : '';
@@ -221,5 +221,42 @@ const Charts = (() => {
     </svg>`;
   }
 
-  return { ring, donut, bars, area, pipeline };
+  /* Linhas (uma escala só). series: [{ nome, valores, cor, tracejado }], rotulos: texto de cada ponto (dica), marcas: [[i, texto]] no eixo */
+  function linhas(series, { w = 640, h = 220, rotulos = [], marcas = [], max = null } = {}) {
+    const padL = 34, padR = 14, padT = 14, padB = 28;
+    const n = Math.max(...series.map(s => s.valores.length));
+    const topo = Math.max(1, max ?? 0, ...series.flatMap(s => s.valores.filter(v => v != null)));
+    const X = i => padL + (i * (w - padL - padR)) / Math.max(1, n - 1);
+    const Y = v => h - padB - (v / topo) * (h - padT - padB);
+    const passos = [0, 0.5, 1].map(f => Math.round(topo * f));
+    const grade = passos.map(v => `<line x1="${padL}" x2="${w - padR}" y1="${Y(v)}" y2="${Y(v)}" class="grid"/><text x="${padL - 8}" y="${Y(v) + 4}" text-anchor="end" class="axis">${v}</text>`).join('');
+    const caminhos = series.map(s => {
+      const pts = s.valores.map((v, i) => (v == null ? null : [X(i), Y(v)])).filter(Boolean);
+      if (!pts.length) return '';
+      const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+      const [lx, ly] = pts[pts.length - 1];
+      return `<path d="${d}" fill="none" stroke="${s.cor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" ${s.tracejado ? 'stroke-dasharray="5 5" opacity=".75"' : ''} vector-effect="non-scaling-stroke"/>${s.tracejado ? '' : `<circle cx="${lx}" cy="${ly}" r="4" fill="${s.cor}" stroke="var(--fundo)" stroke-width="2"/>`}`;
+    }).join('');
+    const eixo = marcas.map(([i, t]) => `<text x="${X(i)}" y="${h - 8}" text-anchor="${i === 0 ? 'start' : i >= n - 1 ? 'end' : 'middle'}" class="axis">${escT(t)}</text>`).join('');
+    // Faixas invisíveis por ponto: passar o mouse mostra a linha guia e os valores
+    const larg = (w - padL - padR) / Math.max(1, n - 1);
+    const faixas = Array.from({ length: n }, (_, i) => {
+      const dica = `${escT(rotulos[i] || '')}${series.map(s => s.valores[i] == null ? '' : `|${escT(s.nome)}: ${s.valores[i]}`).join('')}`;
+      return `<g class="hit" data-tip="${dica}"><rect x="${X(i) - larg / 2}" y="${padT}" width="${larg}" height="${h - padT - padB}" fill="transparent"/><line class="cruz" x1="${X(i)}" x2="${X(i)}" y1="${padT}" y2="${h - padB}"/></g>`;
+    }).join('');
+    return `<svg class="viz-linhas" viewBox="0 0 ${w} ${h}" role="img">${grade}${caminhos}${eixo}${faixas}</svg>`;
+  }
+
+  /* Colunas empilhadas (uma por grupo). series: [{ nome, cor }], grupos: [{ nome, valores: [] }] */
+  function colunas(grupos, series, { h = 220 } = {}) {
+    const topo = Math.max(1, ...grupos.map(g => g.valores.reduce((a, b) => a + b, 0)));
+    return `<div class="viz-colunas" style="--h:${h}px">${grupos.map(g => {
+      const tot = g.valores.reduce((a, b) => a + b, 0);
+      const segs = g.valores.map((v, i) => v ? `<i class="seg-col" style="height:${(v / topo) * 100}%;background:${series[i].cor}" data-tip="${escT(g.nome)}|${escT(series[i].nome)}: ${v}"></i>` : '').join('');
+      return `<div class="col-viz"><b class="col-tot">${tot}</b><div class="col-pilha">${segs}</div><span class="col-nome" title="${escT(g.nome)}">${escT(g.nome)}</span></div>`;
+    }).join('')}</div>`;
+  }
+  const legenda = series => `<div class="viz-legenda">${series.map(s => `<span><i style="background:${s.cor}${s.tracejado ? ';height:2px;border-radius:0' : ''}"></i>${escT(s.nome)}</span>`).join('')}</div>`;
+
+  return { ring, donut, bars, area, pipeline, linhas, colunas, legenda };
 })();
