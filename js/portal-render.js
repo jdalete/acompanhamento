@@ -28,6 +28,8 @@ const PortalRender = (() => {
       const stageData = stages.map(s => ({
         id: s.id,
         name: s.name,
+        expected: s.expected || '',
+        dueDate: s.dueDate || '',
         tasks: db.tasks.filter(t => t.stageId === s.id).sort((a, b) => a.order - b.order)
           .map(t => ({ title: t.title, status: t.status, dueDate: t.dueDate || '', completedAt: t.completedAt || null })),
       }));
@@ -62,7 +64,7 @@ const PortalRender = (() => {
   /* Progresso no topo: o anel é o único ponto focal; ao lado, o que falta e o prazo; embaixo, a trilha das etapas.
      o: { pct, stages:[{id,name,state,pct}], tasksDone, tasksTotal, startDate, dueDate, late, ritmo, click, animate } */
   function hojeISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
-  function progressoLado(o) {
+  function progressoFatos(o) {
     const atual = o.stages.find(s => s.state !== 'concluida');
     const feitas = o.stages.length - o.stages.filter(s => s.state !== 'concluida').length;
     const restam = o.stages.length - feitas;
@@ -84,9 +86,7 @@ const PortalRender = (() => {
           : `<p class="ritmo alerta">${icon('clock', 14)} Pelo tempo que já passou, o esperado hoje seria ${esperado}%</p>`;
       }
     }
-    return `<div class="progresso">
-      <div class="prog-anel">${Charts.ring(o.pct, { size: 196, stroke: 15, sub: pronto ? 'entregue' : 'pronto', animate: o.animate })}</div>
-      <div class="prog-info">
+    return `<div class="prog-info">
         <p class="prog-agora">${pronto ? 'Todas as etapas concluídas' : atual ? `<span>Etapa atual</span><b>${esc(atual.name)}</b>` : 'Etapas a definir'}</p>
         <ul class="prog-fatos">
           ${o.stages.length ? `<li><b>${feitas} de ${o.stages.length}</b> etapas concluídas${restam && !pronto ? `, faltam ${restam}` : ''}</li>` : ''}
@@ -95,8 +95,12 @@ const PortalRender = (() => {
           ${o.late ? `<li class="critico">${icon('alert', 14)} ${o.late} ${o.late === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}</li>` : ''}
         </ul>
         ${ritmo}
-      </div>
-    </div>`;
+      </div>`;
+  }
+  // Variante com o anel ao lado (quando não há caminho para desenhar).
+  function progressoLado(o) {
+    const pronto = o.stages.length > 0 && o.stages.every(s => s.state === 'concluida');
+    return `<div class="progresso"><div class="prog-anel">${Charts.ring(o.pct, { size: 196, stroke: 15, sub: pronto ? 'entregue' : 'pronto', animate: o.animate })}</div>${progressoFatos(o)}</div>`;
   }
   function trilha(o) {
     if (!o.stages.length) return '';
@@ -142,23 +146,28 @@ const PortalRender = (() => {
         const i = info(p);
         return `
         <section class="portal-proj">
-          <section class="panel proj-topo">
-            <div class="proj-topo-grid">
-              <div class="proj-topo-texto">
-                ${p.company ? `<p class="proj-empresa">${icon('building', 14)} ${esc(p.company)}</p>` : ''}
-                <h2>${esc(p.name)}</h2>
-                ${p.description ? `<p class="proj-desc">${esc(p.description)}</p>` : ''}
-                <div class="meta-line"><span class="pill proj-${esc(p.status)}">${PROJECT_LABEL[p.status] || ''}</span>${p.startDate ? `<span class="d">${icon('calendar', 15)} Início em ${fmtDate(p.startDate, true)}</span>` : ''}</div>
-              </div>
-              ${progressoLado({ pct: i.pct, stages: i.stages, tasksDone: i.done, tasksTotal: i.total, dueDate: p.dueDate, startDate: p.startDate })}
+          <div class="proj-cabeca">
+            <div class="proj-cabeca-texto">
+              ${p.company ? `<p class="proj-empresa">${icon('building', 14)} ${esc(p.company)}</p>` : ''}
+              <h2>${esc(p.name)}</h2>
             </div>
-            ${trilha({ stages: i.stages, click: 'portal-stage' })}
+          </div>
+          <section class="panel pipe-panel palco">
+            <div class="palco-grid">
+              <div class="palco-caminho">${i.stages.length ? pipelineBlock(i.stages, i.pct) : `<div class="pipe-vazio">${Charts.ring(i.pct, { size: 180, stroke: 14, sub: 'pronto' })}<p>As etapas deste projeto vão aparecer aqui.</p></div>`}</div>
+              <aside class="palco-lado">
+                <div class="meta-line"><span class="pill proj-${esc(p.status)}">${PROJECT_LABEL[p.status] || ''}</span>${p.startDate ? `<span class="d">${icon('calendar', 15)} Início em ${fmtDate(p.startDate, true)}</span>` : ''}</div>
+                ${progressoFatos({ pct: i.pct, stages: i.stages, tasksDone: i.done, tasksTotal: i.total, dueDate: p.dueDate, startDate: p.startDate })}
+                ${p.description ? `<p class="palco-desc">${esc(p.description)}</p>` : ''}
+                ${i.stages.length ? `<p class="palco-dica">${icon('right', 13)} Toque numa etapa para ver as tarefas dela</p>` : ''}
+              </aside>
+            </div>
           </section>
-          ${i.stages.length ? `<div class="panel pipe-panel">${pipelineBlock(i.stages, i.pct)}</div>` : ''}
           <div class="portal-stages">
             ${i.stages.map((s, k) => `
               <div class="panel pstage" id="pstage-${esc(s.id)}">
                 <div class="h"><span class="stage-idx pidx-${s.state}">${k + 1}</span><h3>${esc(s.name)}</h3><span class="pill ${STAGE_STATE[s.state][0]}">${STAGE_STATE[s.state][1]}</span></div>
+                ${s.dueDate || s.expected ? `<div class="pstage-meta">${s.dueDate ? `<span class="due">${icon('flag', 13)} ${s.state === 'concluida' ? 'Entregue' : 'Entrega prevista'}: ${fmtDate(s.dueDate, true)}</span>` : ''}${s.expected ? `<p class="stage-esperado"><span>Resultado esperado</span>${esc(s.expected)}</p>` : ''}</div>` : ''}
                 ${s.tasks.length ? `<ul>${s.tasks.map(t => {
                   const done = t.status === 'concluida';
                   const doing = t.status === 'em_andamento' || t.status === 'em_revisao';
@@ -191,5 +200,5 @@ const PortalRender = (() => {
     return false;
   }
 
-  return { build, render, safeUrl, handleClick, progressoLado, trilha };
+  return { build, render, safeUrl, handleClick, progressoLado, progressoFatos, trilha };
 })();

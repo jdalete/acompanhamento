@@ -45,6 +45,7 @@ const ICONS = {
   camera: '<path d="M4 8h3.5L9 5.5h6L16.5 8H20v11.5H4z"/><circle cx="12" cy="13" r="3.5"/>',
   unlink: '<path d="M9 17H7a5 5 0 0 1 0-10h2M15 7h2a5 5 0 0 1 0 10h-2M8 12h2M14 12h2"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  grip: '<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
   paperclip: '<path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
 };
 // Marca: o orbe de luz da identidade Brasa (muda de forma em cada tema pelo CSS).
@@ -165,7 +166,7 @@ const Charts = (() => {
     const rowY = rFromBottom => blockBottom - cardH - rFromBottom * (cardH + gap);
     const id = gid('pl');
     const rad = 18;
-    const lineEnd = cy - ry * 0.25;
+    const lineEnd = cy - ry * 0.4;
 
     const items = stages.map((s, i) => {
       let x, y, side;
@@ -209,7 +210,8 @@ const Charts = (() => {
       <path d="${ell}" pathLength="100" fill="none" stroke="url(#${id}arc)" stroke-width="30" stroke-dasharray="${pct} 100" stroke-linecap="round" class="pl-arc" style="--p:${pct}"/>
       <path d="${ell}" pathLength="100" fill="none" stroke-width="6" stroke-dasharray="${pct} 100" stroke-linecap="round" filter="url(#${id}soft)" class="pl-arc pl-core" style="--p:${pct}"/>` : ''}
       ${cards}
-      <text x="${cx}" y="${cy + ry + 52}" text-anchor="middle" class="pl-caption">${pct}% do projeto concluído</text>
+      <text x="${cx}" y="${cy + 30}" text-anchor="middle" class="pl-pct">${pct}<tspan class="pl-pct-s" dx="4">%</tspan></text>
+      <text x="${cx}" y="${cy + ry + 54}" text-anchor="middle" class="pl-caption">do projeto pronto</text>
     </svg>`;
   }
 
