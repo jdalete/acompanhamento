@@ -33,7 +33,8 @@ const PortalRender = (() => {
       }));
       const deliverables = stages.flatMap(s => db.tasks.filter(t => t.stageId === s.id).sort((a, b) => a.order - b.order)
         .flatMap(t => (t.deliverables || []).filter(d => d.value || d.label).map(d => ({ id: d.id, type: d.type, label: d.label, value: d.value, task: t.title }))));
-      return { id: p.id, name: p.name, description: p.description || '', status: p.status, dueDate: p.dueDate || '', stages: stageData, deliverables };
+      const empresa = (db.companies || []).find(e => e.id === p.companyId);
+      return { id: p.id, name: p.name, company: empresa ? empresa.name : '', description: p.description || '', status: p.status, startDate: p.startDate || '', dueDate: p.dueDate || '', stages: stageData, deliverables };
     });
     return {
       v: 1,
@@ -55,7 +56,52 @@ const PortalRender = (() => {
     const total = stages.reduce((a, s) => a + s.total, 0);
     const done = stages.reduce((a, s) => a + s.done, 0);
     const stagesDone = stages.filter(s => s.state === 'concluida').length;
-    return { stages, pct: total ? Math.round((done / total) * 100) : 0, stagesDone, stagesLeft: stages.length - stagesDone, current: stages.find(s => s.state !== 'concluida') };
+    return { stages, total, done, pct: total ? Math.round((done / total) * 100) : 0, stagesDone, stagesLeft: stages.length - stagesDone, current: stages.find(s => s.state !== 'concluida') };
+  }
+
+  /* Progresso no topo: o anel é o único ponto focal; ao lado, o que falta e o prazo; embaixo, a trilha das etapas.
+     o: { pct, stages:[{id,name,state,pct}], tasksDone, tasksTotal, startDate, dueDate, late, ritmo, click, animate } */
+  function hojeISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+  function progressoLado(o) {
+    const atual = o.stages.find(s => s.state !== 'concluida');
+    const feitas = o.stages.length - o.stages.filter(s => s.state !== 'concluida').length;
+    const restam = o.stages.length - feitas;
+    const pronto = o.stages.length > 0 && !atual;
+    const hoje = parseISO(hojeISO());
+    let prazo = '';
+    if (o.dueDate && !pronto) {
+      const dias = Math.round((parseISO(o.dueDate) - hoje) / 86400000);
+      prazo = dias > 1 ? `Entrega em ${dias} dias, ${fmtDate(o.dueDate, true)}` : dias === 1 ? `Entrega amanhã, ${fmtDate(o.dueDate)}` : dias === 0 ? 'Entrega prevista para hoje' : `A entrega estava prevista para ${fmtDate(o.dueDate, true)}`;
+    }
+    // Ritmo: compara o que já está pronto com o que o tempo corrido do projeto pede (só no sistema).
+    let ritmo = '';
+    if (o.ritmo && o.startDate && o.dueDate && !pronto) {
+      const total = parseISO(o.dueDate) - parseISO(o.startDate);
+      if (total > 0) {
+        const esperado = Math.round(Math.max(0, Math.min(1, (hoje - parseISO(o.startDate)) / total)) * 100);
+        ritmo = o.pct >= esperado - 10
+          ? `<p class="ritmo ok">${icon('check', 14)} No ritmo para entregar no prazo</p>`
+          : `<p class="ritmo alerta">${icon('clock', 14)} Pelo tempo que já passou, o esperado hoje seria ${esperado}%</p>`;
+      }
+    }
+    return `<div class="progresso">
+      <div class="prog-anel">${Charts.ring(o.pct, { size: 196, stroke: 15, sub: pronto ? 'entregue' : 'pronto', animate: o.animate })}</div>
+      <div class="prog-info">
+        <p class="prog-agora">${pronto ? 'Todas as etapas concluídas' : atual ? `<span>Etapa atual</span><b>${esc(atual.name)}</b>` : 'Etapas a definir'}</p>
+        <ul class="prog-fatos">
+          ${o.stages.length ? `<li><b>${feitas} de ${o.stages.length}</b> etapas concluídas${restam && !pronto ? `, faltam ${restam}` : ''}</li>` : ''}
+          ${o.tasksTotal ? `<li><b>${o.tasksDone} de ${o.tasksTotal}</b> tarefas feitas</li>` : ''}
+          ${prazo ? `<li>${icon('flag', 14)} ${prazo}</li>` : ''}
+          ${o.late ? `<li class="critico">${icon('alert', 14)} ${o.late} ${o.late === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}</li>` : ''}
+        </ul>
+        ${ritmo}
+      </div>
+    </div>`;
+  }
+  function trilha(o) {
+    if (!o.stages.length) return '';
+    const atual = o.stages.find(s => s.state !== 'concluida');
+    return `<div class="trilha" aria-label="Etapas do projeto">${o.stages.map((s, i) => `<button class="trilha-etapa ${s.state}${s === atual ? ' atual' : ''}" data-act="${o.click}" data-id="${esc(s.id)}" title="${esc(s.name)}: ${s.pct}% pronto"><span class="trilha-barra"><i style="width:${s.pct}%"></i></span><span class="trilha-nome"><small>${i + 1}</small>${esc(s.name)}</span></button>`).join('')}</div>`;
   }
 
   function pipelineBlock(stages, pct) {
@@ -96,16 +142,18 @@ const PortalRender = (() => {
         const i = info(p);
         return `
         <section class="portal-proj">
-          <div class="ph">
-            <div><h2>${esc(p.name)}</h2>${p.description ? `<p>${esc(p.description)}</p>` : ''}</div>
-            <div class="actions"><span class="pill proj-${esc(p.status)}">${PROJECT_LABEL[p.status] || ''}</span>${p.dueDate ? `<span class="pill plain">${icon('flag', 13)} Entrega prevista: ${fmtDate(p.dueDate, true)}</span>` : ''}</div>
-          </div>
-          <div class="kpis portal-kpis">
-            <div class="kpi hot"><div class="k">Concluído</div><div class="v">${i.pct}<small>%</small></div></div>
-            <div class="kpi"><div class="k">Etapas concluídas</div><div class="v">${i.stagesDone}<small> de ${i.stages.length}</small></div></div>
-            <div class="kpi"><div class="k">Etapas restantes</div><div class="v">${i.stagesLeft}</div></div>
-            <div class="kpi"><div class="k">Etapa atual</div><div class="v kpi-text">${i.current ? esc(i.current.name) : 'Projeto concluído'}</div></div>
-          </div>
+          <section class="panel proj-topo">
+            <div class="proj-topo-grid">
+              <div class="proj-topo-texto">
+                ${p.company ? `<p class="proj-empresa">${icon('building', 14)} ${esc(p.company)}</p>` : ''}
+                <h2>${esc(p.name)}</h2>
+                ${p.description ? `<p class="proj-desc">${esc(p.description)}</p>` : ''}
+                <div class="meta-line"><span class="pill proj-${esc(p.status)}">${PROJECT_LABEL[p.status] || ''}</span>${p.startDate ? `<span class="d">${icon('calendar', 15)} Início em ${fmtDate(p.startDate, true)}</span>` : ''}</div>
+              </div>
+              ${progressoLado({ pct: i.pct, stages: i.stages, tasksDone: i.done, tasksTotal: i.total, dueDate: p.dueDate, startDate: p.startDate })}
+            </div>
+            ${trilha({ stages: i.stages, click: 'portal-stage' })}
+          </section>
           ${i.stages.length ? `<div class="panel pipe-panel">${pipelineBlock(i.stages, i.pct)}</div>` : ''}
           <div class="portal-stages">
             ${i.stages.map((s, k) => `
@@ -143,5 +191,5 @@ const PortalRender = (() => {
     return false;
   }
 
-  return { build, render, safeUrl, handleClick };
+  return { build, render, safeUrl, handleClick, progressoLado, trilha };
 })();
