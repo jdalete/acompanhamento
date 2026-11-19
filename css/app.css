@@ -476,8 +476,9 @@ body:not(.tela-painel):not(.portal-mode) #cosmos .cena { opacity: .55; }
 
 /* ============ Painel ============ */
 .dash { grid-template-columns: repeat(12, 1fr); }
-.dash > .hero { grid-column: span 8; }
-.dash > .overall { grid-column: span 4; }
+.dash > .hero { grid-column: span 5; }
+.dash > .overall { grid-column: span 7; }
+.dash > .hero .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .dash > .projects { grid-column: span 12; }
 .dash > .status { grid-column: span 12; }
 .dash > .deadlines { grid-column: span 12; }
@@ -1327,6 +1328,59 @@ html.sem-acesso body > .app, html.sem-acesso #drawer-root, html.sem-acesso #moda
 .ml-num span { font-weight: 300; font-size: clamp(1.1rem, 1.5vw, 1.45rem); color: var(--texto-3); }
 @media (max-width: 1199.98px) { .medidores { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 767.98px) { .medidores { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ml-cab { flex-wrap: wrap; row-gap: 2px; } .ml-cab small { margin-left: 16px; flex-basis: 100%; } .meia-lua { padding: 12px 12px 10px; } }
+/* Palco do projeto: o caminho na largura toda, destaques numa faixa embaixo */
+.palco .palco-grid { display: block; }
+.palco .palco-caminho .pipeline { max-height: 540px; min-height: 380px; }
+.proj-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.proj-meta .d { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; font-size: 14px; color: var(--texto-2); }
+.dash > .hero h1 { font-size: clamp(2.2rem, 3.2vw, 3.1rem); }
+.dash > .hero .clock .t { font-size: clamp(2.4rem, 3.4vw, 3.4rem); }
+.proj-meta { margin-top: 10px; }
+.proj-desc { margin: 10px 0 0; max-width: 76ch; color: var(--texto-2); font-size: 15px; line-height: 1.6; }
+.palco-fatos { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; margin: 6px -2px 0; border-top: 1px solid rgba(var(--claro-rgb), .1); }
+.pf { display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; min-width: 0; border-left: 1px solid rgba(var(--claro-rgb), .08); }
+.pf:first-child { border-left: 0; }
+.pf span { font-size: 12.5px; color: var(--texto-3); }
+.pf b { font-family: var(--f-display); font-weight: 300; font-size: 1.45rem; line-height: 1.2; color: var(--texto); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.pf b small { font-size: .95rem; color: var(--texto-3); }
+.pf small { font-size: 12.5px; color: var(--texto-3); }
+.pf-mau b, .pf-mau > small { color: #FF8A9A; }
+.pf-bom b { color: var(--positivo); }
+.palco .palco-dica { margin: 0; padding: 0 20px 4px; font-size: 12.5px; color: var(--texto-3); display: flex; align-items: center; gap: 6px; }
+@media (max-width: 767.98px) { .palco-fatos { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pf { padding: 14px; border-left: 0; border-top: 1px solid rgba(var(--claro-rgb), .08); } .palco .palco-caminho .pipeline { min-height: 0; } }
+/* Eclipse (cartões de projeto) */
+.eclipse { flex: none; overflow: visible; }
+.eclipse-num { fill: #fff; font-family: var(--f-display); font-weight: 200; letter-spacing: -.03em; }
+/* Medidor grande do painel, em camadas e levemente inclinado */
+.dash > .overall { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 28px; text-align: left; padding: 28px; }
+.overall-txt { max-width: 26ch; }
+.overall-txt h3 { font-size: 18px; }
+.overall-txt p { margin-top: 6px; }
+.anel3d { width: var(--tam); max-width: 100%; aspect-ratio: 1; flex: none; perspective: 1500px; }
+.a3-pilha { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transform: rotateX(13deg) rotateY(-17deg); }
+.a3-camada { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.a3-pontos { transform: translateZ(-18px); }
+.a3-poco { transform: translateZ(-10px); }
+.a3-escala { transform: translateZ(4px); }
+.a3-barras { transform: translateZ(14px); }
+.a3-vidro { transform: translateZ(30px); }
+.a3-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translateZ(36px); pointer-events: none; }
+.a3-num b { font-family: var(--f-display); font-weight: 200; font-size: calc(var(--tam) * .2); line-height: 1; letter-spacing: -.04em; color: #fff; text-shadow: 0 0 30px rgba(var(--acento-rgb), .6); }
+.a3-num b span { font-size: .38em; color: var(--texto-3); margin-left: 4px; }
+.a3-num small { margin-top: 8px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--texto-2); }
+.anel3d .pontos { fill: none; stroke: rgba(var(--claro-rgb), .45); stroke-width: 2.2; stroke-dasharray: .1 7; stroke-linecap: round; }
+.anel3d .fio { fill: none; stroke: rgba(var(--claro-rgb), .1); stroke-width: 1; }
+.anel3d .riscos line { stroke: rgba(var(--claro-rgb), .22); stroke-width: 1.2; stroke-linecap: round; }
+.anel3d .riscos line.m { stroke: rgba(var(--claro-rgb), .5); stroke-width: 1.8; }
+.anel3d .riscos line.acesa { stroke: var(--brasa-clara); }
+.anel3d .ponto-luz { fill: #fff; filter: drop-shadow(0 0 6px var(--brasa-quente)); }
+.anel3d .apagada { stroke: rgba(var(--claro-rgb), .06); }
+.anel3d .brilho { opacity: .8; }
+.anel3d .fio-poco { fill: none; stroke: rgba(var(--claro-rgb), .07); stroke-width: 1; }
+@media (max-width: 1399.98px) { .dash > .overall { flex-direction: column; text-align: center; } .overall-txt { max-width: 40ch; } }
+@media (max-width: 1199.98px) { .dash > .hero, .dash > .overall { grid-column: span 12; } .dash > .hero .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 767.98px) { .a3-pilha { transform: rotateX(9deg) rotateY(-10deg); } .dash > .hero .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media print { .a3-pilha { transform: none; } }
 /* Revisão de layout */
 .cad-bar.proj-bar .cad-busca { max-width: none; }
 .proj-card .top-line .ring, .client-card .ring { flex: none; }
@@ -1883,3 +1937,6 @@ html.zoom-aberto { overflow: hidden; }
   .pl-arc, .ring .draw { animation: none !important; }
   .page-head h1, .proj-hero h1, .portal-hero h1, .hero h1 { color: var(--texto); -webkit-text-fill-color: var(--texto); background: none; }
 }
+
+/* Medidor do painel no celular: o texto vai para baixo do gráfico */
+@media (max-width: 767.98px) { .dash > .overall { flex-direction: column !important; align-items: center !important; text-align: center !important; padding: 20px; } .overall-txt { max-width: none; } }

@@ -162,13 +162,12 @@ const PortalApp = (() => {
         const rel = (dados.relatorios || []).filter(r => r.projeto === p.id);
         corpo = `<section class="panel"><div class="panel-head"><h3>Relatório</h3></div>${rel.length ? relatoriosHTML(rel) : '<p class="rel-vazio">O primeiro relatório deste projeto aparece aqui.</p>'}</section>`;
       }
-      return `<div class="proj-cabeca"><div class="proj-cabeca-texto">${p.company ? `<p class="proj-empresa">${icon('building', 14)} ${esc(p.company)}</p>` : ''}<h2>${esc(p.name)}</h2></div></div>
+      return `<div class="proj-cabeca"><div class="proj-cabeca-texto">${p.company ? `<p class="proj-empresa">${icon('building', 14)} ${esc(p.company)}</p>` : ''}<h2>${esc(p.name)}</h2><div class="meta-line proj-meta"><span class="pill proj-${esc(p.status)}">${{ ativo: 'Ativo', pausado: 'Pausado', concluido: 'Concluído' }[p.status] || ''}</span>${p.startDate ? `<span class="d">${icon('calendar', 15)} Início em ${fd(p.startDate, true)}</span>` : ''}</div>${p.description ? `<p class="proj-desc">${esc(p.description)}</p>` : ''}</div></div>
         <section class="panel pipe-panel palco"><div class="palco-grid">
           <div class="palco-caminho">${i.stages.length ? PortalRender.pipelineBlock(i.stages, i.pct) : `<div class="pipe-vazio">${Charts.ring(i.pct, { size: 180, stroke: 14, sub: 'pronto' })}</div>`}</div>
-          <aside class="palco-lado"><div class="meta-line"><span class="pill proj-${esc(p.status)}">${{ ativo: 'Ativo', pausado: 'Pausado', concluido: 'Concluído' }[p.status] || ''}</span>${p.startDate ? `<span class="d">${icon('calendar', 15)} Início em ${fd(p.startDate, true)}</span>` : ''}</div>
-            ${PortalRender.progressoFatos({ pct: i.pct, stages: i.stages, tasksDone: i.done, tasksTotal: i.total, dueDate: p.dueDate, startDate: p.startDate })}
-            ${p.description ? `<p class="palco-desc">${esc(p.description)}</p>` : ''}</aside>
-        </div></section>
+        </div>
+        ${PortalRender.destaques({ stages: i.stages, tasksDone: i.done, tasksTotal: i.total, dueDate: p.dueDate })}
+        </section>
         <div class="cli-modos no-print"><div class="tabs" role="tablist" aria-label="Forma de ver">${modos.map(([v, l, ic]) => `<button role="tab" class="${est.modo === v ? 'on' : ''}" data-c="modo" data-v="${v}">${icon(ic, 15)} ${l}</button>`).join('')}</div></div>
         ${corpo}`;
     }

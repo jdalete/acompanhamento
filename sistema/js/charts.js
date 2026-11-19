@@ -356,5 +356,64 @@ const Charts = (() => {
     </div>`;
   }
 
-  return { ring, donut, aneis, trilho, meiaLua, bars, area, pipeline, linhas, colunas, legenda };
+  /* Eclipse: disco escuro com halo de luz, arco fino aberto embaixo, pontinhos nas pontas e um ponteiro entrando no disco */
+  function eclipse(pct, { size = 112 } = {}) {
+    const v = Math.max(0, Math.min(100, Number(pct) || 0));
+    const c = size / 2, R = c - 5, rd = c * 0.56, id = gid('ec');
+    const INI = 125, VAR = 290, g = INI + (VAR * v) / 100;
+    const [ax, ay] = P(c, R, INI), [bx, by] = P(c, R, INI + VAR), [px, py] = P(c, R, g), [qx, qy] = P(c, rd * 0.62, g);
+    return `<svg class="eclipse" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${v}% concluído">
+      <defs>
+        <radialGradient id="${id}h" cx=".42" cy=".38" r=".6"><stop offset=".55" stop-color="#d6e4ff" stop-opacity=".0"/><stop offset=".68" stop-color="#d6e4ff" stop-opacity=".55"/><stop offset="1" stop-color="#d6e4ff" stop-opacity="0"/></radialGradient>
+        <radialGradient id="${id}d" cx=".45" cy=".4" r=".7"><stop offset="0" stop-color="#171b24"/><stop offset=".8" stop-color="#05070b"/><stop offset="1" stop-color="#020306"/></radialGradient>
+        <linearGradient id="${id}a" gradientUnits="userSpaceOnUse" x1="${ax}" y1="${ay}" x2="${px}" y2="${py}"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff"/></linearGradient>
+      </defs>
+      <circle cx="${c}" cy="${c}" r="${rd * 1.32}" fill="url(#${id}h)"/>
+      <path d="${arco(c, R, INI, INI + VAR)}" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1"/>
+      ${v > 0 ? `<path d="${arco(c, R, INI, Math.max(INI + 0.6, g))}" fill="none" stroke="url(#${id}a)" stroke-width="${Math.max(1.4, size / 70)}" stroke-linecap="round"/>` : ''}
+      <circle cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="${size / 60 + 1}" fill="rgba(255,255,255,.35)"/><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="${size / 60 + 1}" fill="rgba(255,255,255,.35)"/>
+      <circle cx="${c}" cy="${c}" r="${rd}" fill="url(#${id}d)"/>
+      <line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${qx.toFixed(1)}" y2="${qy.toFixed(1)}" stroke="rgba(255,255,255,.85)" stroke-width="${Math.max(.8, size / 160)}"/>
+      <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${size / 55 + 1}" fill="#fff"/>
+      <text x="${c}" y="${c + size * 0.085}" text-anchor="middle" class="eclipse-num" style="font-size:${size * 0.24}px">${v}</text>
+    </svg>`;
+  }
+
+  /* Medidor grande do painel: camadas empilhadas com profundidade (cada camada num plano), levemente inclinado.
+     Pontilhado por fora, escala, barras largas acesas, poço escuro com textura e um aro de vidro. Só SVG e CSS 3D estático. */
+  function anel3d(pct, { tam = 400, sub = 'concluído' } = {}) {
+    const v = Math.max(0, Math.min(100, Number(pct) || 0));
+    const c = tam / 2, id = gid('a3');
+    const svg = (cls, corpo, defs = '') => `<svg class="a3-camada ${cls}" viewBox="0 0 ${tam} ${tam}" aria-hidden="true">${defs ? `<defs>${defs}</defs>` : ''}${corpo}</svg>`;
+    // 1) pontilhado e escala
+    let esc = '';
+    for (let k = 0; k < 100; k++) { const g = -90 + k * 3.6, maior = k % 10 === 0; const [x0, y0] = P(c, c * 0.93, g), [x1, y1] = P(c, c * (maior ? 0.865 : 0.89), g); esc += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" class="${maior ? 'm' : ''} ${k < v ? 'acesa' : ''}"/>`; }
+    // 2) barras largas
+    const N = 44, fatia = 360 / N, r1 = c * 0.6, r2 = c * 0.82, rm = (r1 + r2) / 2;
+    let barras = '', acesas = '';
+    for (let k = 0; k < N; k++) {
+      const g0 = -90 + k * fatia + 1.1, g1 = -90 + (k + 1) * fatia - 1.1, on = (k + 1) / N <= v / 100 + 0.0001;
+      const d = `<path d="${arco(c, rm, g0, g1)}" fill="none" stroke-width="${r2 - r1}"`;
+      if (on) acesas += `${d} stroke="url(#${id}g)"/>`; else barras += `${d} class="apagada"/>`;
+    }
+    const [px, py] = P(c, c * 0.89, -90 + 3.6 * v);
+    return `<div class="anel3d" style="--tam:${tam}px" role="img" aria-label="${v}% ${escT(sub)}">
+      <div class="a3-pilha">
+        ${svg('a3-pontos', `<circle cx="${c}" cy="${c}" r="${c - 3}" class="pontos"/><circle cx="${c}" cy="${c}" r="${c * 0.955}" class="fio"/>`)}
+        ${svg('a3-escala', `<g class="riscos">${esc}</g>${v > 0 ? `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4" class="ponto-luz"/>` : ''}`)}
+        ${svg('a3-poco', `<circle cx="${c}" cy="${c}" r="${r1 - 4}" fill="url(#${id}p)"/><circle cx="${c}" cy="${c}" r="${r1 - 4}" fill="url(#${id}t)"/><circle cx="${c}" cy="${c}" r="${r1 * 0.78}" class="fio-poco"/><circle cx="${c}" cy="${c}" r="${r1 * 0.55}" class="fio-poco"/>`,
+          `<radialGradient id="${id}p" cx=".45" cy=".4" r=".7"><stop offset="0" stop-color="#151a26"/><stop offset=".75" stop-color="#05070c"/><stop offset="1" stop-color="#010204"/></radialGradient>
+           <pattern id="${id}x" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="3.5" cy="3.5" r=".8" fill="rgba(255,255,255,.09)"/></pattern>
+           <radialGradient id="${id}m"><stop offset=".55" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+           <mask id="${id}k"><circle cx="${c}" cy="${c}" r="${r1}" fill="url(#${id}m)"/></mask>`).replace(`fill="url(#${id}t)"`, `fill="url(#${id}x)" mask="url(#${id}k)"`)}
+        ${svg('a3-barras', `<g class="trilho">${barras}</g><g class="brilho" filter="url(#${id}b)">${acesas}</g><g>${acesas}</g>`,
+          `<linearGradient id="${id}g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" style="stop-color:var(--acc-2)"/><stop offset=".55" style="stop-color:var(--acc)"/><stop offset="1" style="stop-color:var(--acc-3)"/></linearGradient><filter id="${id}b" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${tam / 45}"/></filter>`)}
+        ${svg('a3-vidro', `<circle cx="${c}" cy="${c}" r="${c * 0.84}" fill="none" stroke="url(#${id}v)" stroke-width="2.4"/><circle cx="${c}" cy="${c}" r="${r1 - 2}" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1"/>`,
+          `<linearGradient id="${id}v" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".35" stop-color="#fff" stop-opacity=".05"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".35"/></linearGradient>`)}
+        <div class="a3-num"><b>${v}<span>%</span></b><small>${escT(sub)}</small></div>
+      </div>
+    </div>`;
+  }
+
+  return { ring, donut, aneis, trilho, meiaLua, eclipse, anel3d, bars, area, pipeline, linhas, colunas, legenda };
 })();

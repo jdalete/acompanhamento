@@ -354,8 +354,8 @@
       </section>
 
       <section class="panel overall">
-        ${Charts.ring(pct, { size: 220, stroke: 16, sub: 'concluído', animate: ANIM })}
-        <div><h3 style="font-size:17px">Progresso dos projetos ativos</h3><p style="margin-top:4px">${done} de ${plural(tasks.length, 'tarefa concluída', 'tarefas concluídas')} somando todos os projetos em andamento.</p></div>
+        ${Charts.anel3d(pct, { tam: 400, sub: 'concluído' })}
+        <div class="overall-txt"><h3>Progresso dos projetos ativos</h3><p>${done} de ${plural(tasks.length, 'tarefa concluída', 'tarefas concluídas')} somando todos os projetos em andamento.</p></div>
       </section>
 
       <section class="panel projects">
@@ -636,7 +636,7 @@
     return `<a class="panel proj-card" href="#/projeto/${p.id}">
       <div class="top-line">
         <div style="min-width:0">${projPill(p.status)}<h3 style="margin-top:12px">${esc(p.name)}</h3>${quem ? `<p class="proj-who">${quem}</p>` : ''}</div>
-        ${Charts.ring(i.pct, { size: 92, stroke: 8 })}
+        ${Charts.eclipse(i.pct, { size: 116 })}
       </div>
       ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
       <div class="facts">
@@ -701,6 +701,8 @@
         <div class="proj-cabeca-texto">
           <div class="quem-linha">${c ? `<a class="client-link" href="#/cliente/${c.id}">${clientAvatar(c, '')}${esc(c.name)}</a>` : ''}${co ? `<a class="client-link" href="#/empresa/${co.id}">${clientAvatar(co, '')}${esc(co.name)}</a>` : ''}</div>
           <h1>${esc(p.name)}<span class="ponto">.</span></h1>
+          <div class="meta-line proj-meta">${projPill(p.status)}${p.startDate ? `<span class="d">${icon('calendar', 15)} Início em ${fmtDate(p.startDate, true)}</span>` : ''}</div>
+          ${p.description ? `<p class="proj-desc">${esc(p.description)}</p>` : ''}
         </div>
         <div class="actions">
           ${c ? `<a class="btn" href="#/portal/${c.id}">${icon('eye', 16)} Visão do cliente</a><button class="btn" data-act="share-client" data-id="${c.id}">${icon('link', 16)} ${c.shareToken ? 'Link do cliente' : 'Criar link do cliente'}</button>` : ''}
@@ -712,13 +714,9 @@
       <section class="panel pipe-panel palco">
         <div class="palco-grid">
           <div class="palco-caminho">${info.stages.length ? pipelineBlock(info, 'goto-stage') : `<div class="pipe-vazio">${Charts.ring(0, { size: 180, stroke: 14, sub: 'pronto' })}<p>Crie as etapas do projeto para ver o caminho até a entrega.</p></div>`}</div>
-          <aside class="palco-lado">
-            <div class="meta-line">${projPill(p.status)}${p.startDate ? `<span class="d">${icon('calendar', 15)} Início em ${fmtDate(p.startDate, true)}</span>` : ''}</div>
-            ${PortalRender.progressoFatos(fatos)}
-            ${p.description ? `<p class="palco-desc">${esc(p.description)}</p>` : ''}
-            ${info.stages.length ? `<p class="palco-dica">${icon('right', 13)} Clique numa etapa para ver as tarefas dela</p>` : ''}
-          </aside>
         </div>
+        ${PortalRender.destaques({ stages: etapas, tasksDone: info.done, tasksTotal: info.total, dueDate: p.dueDate, late: info.late, ritmo: ritmoProjeto(p, info) })}
+        ${info.stages.length ? `<p class="palco-dica">${icon('right', 13)} Clique numa etapa do caminho para ver as tarefas dela</p>` : ''}
       </section>
 
       ${info.stages.length ? `

@@ -435,5 +435,23 @@ const PortalRender = (() => {
     </div>`;
   }
 
-  return { build, render, gantt, info, pipelineBlock, safeUrl, handleClick, progressoLado, progressoFatos, trilha, galeriaGrade, entrega: deliv, usarImagens, preencherImagens, esquecerImagem, abrirZoom };
+  /* Faixa de destaques embaixo do caminho do projeto (no lugar do antigo painel lateral de textos).
+     o: { stages, tasksDone, tasksTotal, dueDate, late, ritmo: { k, txt } } */
+  function destaques(o) {
+    const atual = o.stages.find(s => s.state !== 'concluida');
+    const feitas = o.stages.filter(s => s.state === 'concluida').length;
+    const n = o.dueDate ? Math.round((parseISO(o.dueDate) - parseISO(hojeISO())) / 86400000) : null;
+    const prazo = o.dueDate ? (n < 0 ? `${-n} ${n === -1 ? 'dia' : 'dias'} de atraso` : n === 0 ? 'É hoje' : `Faltam ${n} ${n === 1 ? 'dia' : 'dias'}`) : 'Sem data definida';
+    const tiles = [
+      ['Etapa atual', atual ? esc(atual.name) : o.stages.length ? 'Todas concluídas' : 'Sem etapas', atual ? `${atual.pct}% desta etapa` : '', ''],
+      ['Etapas', `${feitas}<small> de ${o.stages.length}</small>`, `${o.stages.length - feitas} ${o.stages.length - feitas === 1 ? 'falta' : 'faltam'}`, 'num'],
+      ['Tarefas feitas', `${o.tasksDone}<small> de ${o.tasksTotal}</small>`, o.tasksTotal ? `${Math.round(o.tasksDone / o.tasksTotal * 100)}% do total` : '', 'num'],
+      ['Entrega', o.dueDate ? fmtDate(o.dueDate, true) : 'Sem data', prazo, n != null && n < 0 ? 'mau' : ''],
+    ];
+    if (o.late != null) tiles.push(['Atrasadas', String(o.late), o.late ? (o.late === 1 ? 'tarefa precisa de atenção' : 'tarefas precisam de atenção') : 'tudo em dia', o.late ? 'mau' : 'bom']);
+    if (o.ritmo) tiles.push(['Ritmo', esc(o.ritmo.txt), 'comparado com o tempo que já passou', o.ritmo.k]);
+    return `<div class="palco-fatos">${tiles.map(([k, v, sub, cls]) => `<div class="pf ${cls ? 'pf-' + cls : ''}"><span>${k}</span><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`).join('')}</div>`;
+  }
+
+  return { build, render, gantt, info, pipelineBlock, destaques, safeUrl, handleClick, progressoLado, progressoFatos, trilha, galeriaGrade, entrega: deliv, usarImagens, preencherImagens, esquecerImagem, abrirZoom };
 })();
