@@ -478,10 +478,9 @@ body:not(.tela-painel):not(.portal-mode) #cosmos .cena { opacity: .55; }
 .dash { grid-template-columns: repeat(12, 1fr); }
 .dash > .hero { grid-column: span 8; }
 .dash > .overall { grid-column: span 4; }
-.dash > .projects { grid-column: span 7; }
-.dash > .status { grid-column: span 5; }
-.dash > .weekly { grid-column: span 5; }
-.dash > .deadlines { grid-column: span 7; }
+.dash > .projects { grid-column: span 12; }
+.dash > .status { grid-column: span 12; }
+.dash > .deadlines { grid-column: span 12; }
 .dash > .load { grid-column: span 12; }
 
 .hero { display: flex; flex-direction: column; justify-content: space-between; gap: 28px; min-height: 300px; }
@@ -1310,6 +1309,24 @@ html.sem-acesso body > .app, html.sem-acesso #drawer-root, html.sem-acesso #moda
 .acesso-dica { font-size: 12.5px; color: var(--texto-3); margin: -4px 0 0; }
 .acesso-erro { min-height: 18px; margin: 0; font-size: 13.5px; color: #FF8A9A; }
 .conta-linha a { color: var(--brasa-clara); word-break: break-all; }
+/* Status das tarefas: um medidor de meia-lua por situação */
+.medidores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.meia-lua { display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 12px; border-radius: var(--raio); background: linear-gradient(165deg, rgba(var(--claro-rgb), .07), rgba(var(--claro-rgb), .015)); border: 1px solid rgba(var(--claro-rgb), .09); min-width: 0; }
+.ml-cab { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13.5px; }
+.ml-cab b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ml-cab small { margin-left: auto; color: var(--texto-3); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ml-ponto { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--cor); box-shadow: 0 0 8px var(--cor); }
+.ml-corpo { position: relative; }
+.ml-corpo svg { display: block; width: 100%; height: auto; overflow: visible; }
+.ml-riscos line { stroke: rgba(var(--claro-rgb), .16); stroke-width: 1; }
+.ml-trilho { stroke: rgba(var(--claro-rgb), .22); stroke-width: 1.5; }
+.ml-valor { stroke: var(--cor); stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 5px var(--cor)); }
+.ml-marca { stroke: #fff; stroke-width: 2; stroke-linecap: round; }
+.ml-num { position: absolute; left: 0; right: 0; bottom: 4px; display: flex; justify-content: center; align-items: baseline; font-family: var(--f-display); font-variant-numeric: tabular-nums; }
+.ml-num b { font-weight: 300; font-size: clamp(1.7rem, 2.4vw, 2.3rem); letter-spacing: -.02em; color: var(--texto); }
+.ml-num span { font-weight: 300; font-size: clamp(1.1rem, 1.5vw, 1.45rem); color: var(--texto-3); }
+@media (max-width: 1199.98px) { .medidores { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 767.98px) { .medidores { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ml-cab { flex-wrap: wrap; row-gap: 2px; } .ml-cab small { margin-left: 16px; flex-basis: 100%; } .meia-lua { padding: 12px 12px 10px; } }
 /* Revisão de layout */
 .cad-bar.proj-bar .cad-busca { max-width: none; }
 .proj-card .top-line .ring, .client-card .ring { flex: none; }

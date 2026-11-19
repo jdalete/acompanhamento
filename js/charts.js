@@ -334,5 +334,27 @@ const Charts = (() => {
   /* Trilho fino com escala e ponto de luz na ponta (barras de progresso do painel) */
   const trilho = pct => `<span class="trilho-luz" style="--p:${Math.max(0, Math.min(100, pct))}%" role="img" aria-label="${pct}%"><i></i><b></b></span>`;
 
-  return { ring, donut, aneis, trilho, bars, area, pipeline, linhas, colunas, legenda };
+  /* Meia-lua: arco fino sobre uma faixa de risquinhos, com uma marca no valor e o percentual grande no centro */
+  function meiaLua(pct, { cor = 'var(--acc)', rotulo = '', detalhe = '' } = {}) {
+    const v = Math.max(0, Math.min(100, Number(pct) || 0));
+    const w = 240, h = 132, cx = w / 2, cy = h - 8, r = 104, g = 180 + (180 * v) / 100;
+    let riscos = '';
+    for (let a = 181; a < 360; a += 2.4) { const [x0, y0] = P(cx, r - 9, a), [x1, y1] = P(cx, r - 24, a); riscos += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/>`; }
+    const [m0x, m0y] = P(cx, r - 9, g), [m1x, m1y] = P(cx, r + 9, g);
+    const inteiro = Math.floor(v), dec = (v - inteiro).toFixed(2).slice(1).replace('.', ',');
+    return `<div class="meia-lua" style="--cor:${cor}">
+      <div class="ml-cab"><span class="ml-ponto"></span><b>${escT(rotulo)}</b><small>${escT(detalhe)}</small></div>
+      <div class="ml-corpo">
+        <svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${escT(rotulo)}: ${v.toFixed(1).replace('.', ',')}%">
+          <g class="ml-riscos">${riscos}</g>
+          <path d="${arco(cx, r, 180, 360)}" class="ml-trilho" fill="none"/>
+          ${v > 0 ? `<path d="${arco(cx, r, 180, Math.max(180.5, g))}" class="ml-valor" fill="none"/>` : ''}
+          <line x1="${m0x.toFixed(1)}" y1="${m0y.toFixed(1)}" x2="${m1x.toFixed(1)}" y2="${m1y.toFixed(1)}" class="ml-marca"/>
+        </svg>
+        <div class="ml-num"><b>${inteiro}</b><span>${dec}%</span></div>
+      </div>
+    </div>`;
+  }
+
+  return { ring, donut, aneis, trilho, meiaLua, bars, area, pipeline, linhas, colunas, legenda };
 })();

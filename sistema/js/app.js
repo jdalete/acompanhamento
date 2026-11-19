@@ -377,16 +377,8 @@
       </section>
 
       <section class="panel status">
-        <div class="panel-head"><h3>Status das tarefas</h3><span class="sub">Projetos ativos</span></div>
-        <div class="donut-wrap">
-          ${Charts.aneis(counts.map(x => ({ value: x.n, color: colors[x.s], label: STATUS[x.s].label })), { size: 190, center: String(tasks.length), sub: 'tarefas' })}
-          <div class="legend">${counts.map(x => `<div><i style="background:${colors[x.s]}"></i><span>${STATUS[x.s].label}</span><b>${x.n}</b></div>`).join('')}</div>
-        </div>
-      </section>
-
-      <section class="panel weekly">
-        <div class="panel-head"><h3>Tarefas concluídas por semana</h3><span class="sub">Últimas 8 semanas</span></div>
-        ${Charts.bars(weeks, wl, { h: 170 })}
+        <div class="panel-head"><h3>Status das tarefas</h3><span class="sub">${plural(tasks.length, 'tarefa', 'tarefas')} dos projetos ativos</span></div>
+        <div class="medidores">${counts.map(x => Charts.meiaLua(tasks.length ? (x.n / tasks.length) * 100 : 0, { cor: x.s === 'a_fazer' ? 'rgba(var(--claro-rgb), .75)' : colors[x.s], rotulo: STATUS[x.s].label, detalhe: `${x.n} de ${tasks.length}` })).join('')}</div>
       </section>
 
       <section class="panel deadlines">
