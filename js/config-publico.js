@@ -2,4 +2,5 @@
 window.PORTAL_CONFIG = {
   supabaseUrl: 'https://obayfyiymqwahuldsaeu.supabase.co',
   supabaseKey: 'sb_publishable_G2qebDZiQWb4WyarTfWn4w_mnH30Q81',
+  portalBaseUrl: 'https://jdalete.github.io/acompanhamento/',
 };

@@ -370,5 +370,70 @@ const PortalRender = (() => {
     }
   }, true);
 
-  return { build, render, safeUrl, handleClick, progressoLado, progressoFatos, trilha, galeriaGrade, entrega: deliv, usarImagens, preencherImagens, esquecerImagem, abrirZoom };
+  /* ---------- Cronograma (Gantt) ----------
+     etapas: [{ id, nome, inicio, fim, pct, estado, tarefas: [{ id, titulo, inicio, fim, status, quem }] }]
+     zoom: 'semana' | 'mes' | 'projeto'. Sem datas, a etapa ou tarefa vai para a lista "Sem datas definidas". */
+  const DIA = 86400000;
+  const isoHoje = () => hojeISO();
+  function gantt(etapas, { zoom = 'mes', abrirTarefa = '' } = {}) {
+    const datas = [];
+    etapas.forEach(e => { [e.inicio, e.fim].forEach(d => d && datas.push(d)); e.tarefas.forEach(t => [t.inicio, t.fim].forEach(d => d && datas.push(d))); });
+    const semDatas = [];
+    etapas.forEach(e => { if (!e.inicio && !e.fim && !e.tarefas.some(t => t.inicio || t.fim)) semDatas.push({ tipo: 'Etapa', nome: e.nome }); e.tarefas.forEach(t => { if (!t.inicio && !t.fim) semDatas.push({ tipo: 'Tarefa', nome: t.titulo, etapa: e.nome }); }); });
+    if (!datas.length) return `<div class="gantt-vazio"><p>O cronograma aparece quando as etapas e tarefas tiverem data de início e de entrega.</p></div>`;
+    datas.push(isoHoje());
+    datas.sort();
+    let ini = parseISO(datas[0]), fim = parseISO(datas[datas.length - 1]);
+    ini = new Date(ini.getTime() - 3 * DIA); fim = new Date(fim.getTime() + 4 * DIA);
+    const dias = Math.max(7, Math.round((fim - ini) / DIA));
+    const pos = iso => ((parseISO(iso) - ini) / DIA / dias) * 100;
+    const px = zoom === 'semana' ? 40 : zoom === 'mes' ? 14 : 0;
+    // Régua: meses e semanas
+    let regua = '';
+    for (let d = new Date(ini.getFullYear(), ini.getMonth(), 1); d <= fim; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+      const x = Math.max(0, ((d - ini) / DIA / dias) * 100);
+      regua += `<span class="g-mes" style="left:${x}%">${MONTHS_FULL[d.getMonth()]}${d.getMonth() === 0 || x === 0 ? ` ${d.getFullYear()}` : ''}</span>`;
+    }
+    if (zoom !== 'projeto') {
+      for (let d = new Date(ini); d <= fim; d = new Date(d.getTime() + DIA)) {
+        if (d.getDay() !== 1) continue;
+        const x = ((d - ini) / DIA / dias) * 100;
+        regua += `<span class="g-semana" style="left:${x}%">${zoom === 'semana' ? `${d.getDate()}/${d.getMonth() + 1}` : ''}</span>`;
+      }
+    }
+    const hoje = pos(isoHoje());
+    const intervalo = (a, b) => { const A = a || b, B = b || a; return A > B ? [B, A] : [A, B]; };
+    const barra = (a, b, cls, dica, extra = '') => {
+      if (!a && !b) return '';
+      const [x0, x1] = intervalo(a, b);
+      const l = pos(x0), w = Math.max(((parseISO(x1) - parseISO(x0)) / DIA + 1) / dias * 100, 0.6);
+      const marco = !a || !b;
+      return `<i class="g-barra ${cls} ${marco ? 'g-marco' : ''}" style="left:${l}%;width:${marco ? 0 : w}%" title="${esc(dica)}">${extra}</i>`;
+    };
+    const fmt = (a, b) => { const [x0, x1] = intervalo(a, b); return x0 === x1 ? fmtDate(x0, true) : `${fmtDate(x0)} a ${fmtDate(x1, true)}`; };
+    const linhas = etapas.map((e, k) => {
+      const ti = e.tarefas.map(t => t.inicio || t.fim).filter(Boolean).sort(), tf = e.tarefas.map(t => t.fim || t.inicio).filter(Boolean).sort();
+      const ei = e.inicio || ti[0] || '', ef = e.fim || tf[tf.length - 1] || '';
+      const dicaE = `${e.nome}${ei || ef ? `: ${fmt(ei, ef)}` : ''}. ${e.pct}% feito`;
+      const tarefas = e.tarefas.map(t => `<div class="g-linha g-l-tarefa">
+          <div class="g-rot">${abrirTarefa ? `<button class="g-nome" data-act="${abrirTarefa}" data-id="${esc(t.id)}" title="${esc(t.titulo)}">` : `<span class="g-nome" title="${esc(t.titulo)}">`}<i class="g-st g-st-${esc(t.status)}"></i>${esc(t.titulo)}${abrirTarefa ? '</button>' : '</span>'}${t.quem ? `<small>${esc(t.quem)}</small>` : ''}</div>
+          <div class="g-faixa">${barra(t.inicio, t.fim, `g-t g-t-${esc(t.status)}`, `${t.titulo}${t.inicio || t.fim ? `: ${fmt(t.inicio, t.fim)}` : ''}${t.quem ? `. ${t.quem}` : ''}`)}</div>
+        </div>`).join('');
+      return `<details class="g-etapa" open>
+        <summary class="g-linha g-l-etapa"><div class="g-rot"><span class="g-num g-num-${esc(e.estado)}">${k + 1}</span><b title="${esc(e.nome)}">${esc(e.nome)}</b><small>${ei || ef ? fmt(ei, ef) : 'Sem datas'}</small></div>
+          <div class="g-faixa">${barra(ei, ef, `g-e g-e-${esc(e.estado)}`, dicaE, `<i class="g-feito" style="width:${e.pct}%"></i><span>${e.pct}%</span>`)}</div></summary>
+        ${tarefas}
+      </details>`;
+    }).join('');
+    return `<div class="gantt z-${zoom}">
+      <div class="gantt-rolagem"><div class="gantt-grade" style="${px ? `--largura:${dias * px}px` : ''}">
+        <div class="g-linha g-cab"><div class="g-rot">Etapas e tarefas</div><div class="g-faixa g-regua">${regua}</div></div>
+        ${linhas}
+        <div class="g-hoje-faixa" aria-hidden="true"><i class="g-hoje" style="left:${hoje}%"><span>Hoje</span></i></div>
+      </div></div>
+      ${semDatas.length ? `<details class="g-sem"><summary>${semDatas.length} ${semDatas.length === 1 ? 'item' : 'itens'} sem datas definidas</summary><ul>${semDatas.map(x => `<li><small>${x.tipo}</small> ${esc(x.nome)}${x.etapa ? ` <span>(${esc(x.etapa)})</span>` : ''}</li>`).join('')}</ul></details>` : ''}
+    </div>`;
+  }
+
+  return { build, render, gantt, info, pipelineBlock, safeUrl, handleClick, progressoLado, progressoFatos, trilha, galeriaGrade, entrega: deliv, usarImagens, preencherImagens, esquecerImagem, abrirZoom };
 })();
